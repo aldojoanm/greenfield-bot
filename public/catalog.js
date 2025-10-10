@@ -38,29 +38,13 @@
   let RATE = 6.96;
   let CART = [];
 
-  // ========= NOMBRES deseados y mapeos ====
-  // Si tu JSON trae nombres antiguos (DRIER, GLISATO, etc.),
-  // aquí forzamos el nombre de exhibición correcto.
-  const NAME_OVERRIDES = {
-    DRIER: 'Balanzer',
-    GLISATO: 'Fitomare',
-    FIX: 'Fix',
-    KELIK: 'Kelik',
-    NITROGREEN: 'NitroGreen',
-    VOXY: 'Voxy'
-  };
-
-  // ========= IMÁGENES (case-sensitive) ====
-  // Asegúrate de que estos archivos existan EXACTAMENTE así:
-  // /image/Balanzer.jpeg, /image/Fitomare.jpeg, etc.
-  const IMAGE_MAP = {
-    BALANZER: '/image/Balanzer.jpeg',
-    FITOMARE: '/image/Fitomare.jpeg',
-    FIX: '/image/Fix.jpeg',
-    KELIK: '/image/Kelik.jpeg',
-    NITROGREEN: '/image/NitroGreen.jpeg',
-    VOXY: '/image/Voxy.jpeg'
-  };
+  // ==== IMÁGENES ====
+  // Intentamos encontrar /image/<NombreSinEspacios>.jpeg (sensible a mayúsculas).
+  // Si no existe, onerror cae en /image/placeholder.png
+  function guessImagePath(name){
+    const key = String(name||'').replace(/\s+/g,'');
+    return `/image/${key}.jpeg`;
+  }
 
   // utils
   const esc  = s => String(s ?? '').replace(/[&<>"]/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[m]));
@@ -70,20 +54,10 @@
     return m ? Number(m[0]) : 0;
   };
   const fmt2 = n => (Number(n)||0).toFixed(2);
-  const onlyKey = s => String(s||'').normalize('NFD').replace(/\p{Diacritic}/gu,'').replace(/\W+/g,'').toUpperCase();
   const packFromPres = pres => {
     const m = String(pres||'').match(/(\d+(?:\.\d+)?)/);
     return m ? Number(m[1]) : 1;
   };
-
-  function desiredNameFor(rawName){
-    const k = onlyKey(rawName);
-    return NAME_OVERRIDES[k] || rawName || '';
-  }
-  function imageFor(displayName){
-    const k = onlyKey(displayName);
-    return IMAGE_MAP[k] || '/image/placeholder.png';
-  }
 
   /* ===================== UI: secciones ===================== */
   function renderSections(){
@@ -115,7 +89,7 @@
 
     const usd0 = num(first.precio_usd);
     const bs0  = num(first.precio_bs) || +(usd0 * RATE).toFixed(2);
-    const imgSrc = item.imagen || imageFor(item.nombre);
+    const imgSrc = item.imagen || guessImagePath(item.nombre);
 
     return `
       <div class="prod" data-name="${esc(item.nombre)}">
@@ -275,7 +249,7 @@
       paintTotals();
     }
 
-    // modal móvil
+    // modal móvil (refresco)
     cartM.innerHTML = cartEl.innerHTML || `<div class="empty">Tu carrito está vacío.</div>`;
     totalsM.innerHTML = totalsEl.innerHTML || '';
     cartM.querySelectorAll('.rm').forEach(b=> b.addEventListener('click',()=> removeAt(+b.getAttribute('data-i'))));
@@ -295,7 +269,7 @@
     cartBadge.style.display = count>0 ? 'inline-block' : 'none';
     if (count>0) cartBadge.textContent = String(count);
 
-    // mínimo de compra
+    // mínimo
     const t = totals();
     const okMin = t.usd >= MIN_ORDER_USD;
     sendEl.disabled = !okMin || CART.length===0;
@@ -307,7 +281,6 @@
     totalsEl.innerHTML = `Total: US$ ${fmt2(t.usd)} · Bs ${fmt2(t.bs)}<br><span class="muted">TC ${fmt2(RATE)}</span>`;
   }
 
-  // Texto para WhatsApp
   function buildWaText() {
     const lines = CART.map(it => {
       const cant   = fmt2(it.cantidad);
@@ -317,28 +290,16 @@
       const subBs  = (it.precio_bs  != null ? Number(it.precio_bs)  * Number(it.cantidad || 0) : 0);
       return `* ${it.nombre}${pres} — ${cant}${unidad} — SUBTOTAL: US$ ${fmt2(subUsd)} · Bs ${fmt2(subBs)}`;
     });
-
     const t = totals();
-    return [
-      'Pedido',
-      ...lines,
-      `TOTAL USD: ${fmt2(t.usd)}`,
-      `TOTAL BS: ${fmt2(t.bs)}`
-    ].join('\n');
+    return ['Pedido', ...lines, `TOTAL USD: ${fmt2(t.usd)}`, `TOTAL BS: ${fmt2(t.bs)}`].join('\n');
   }
 
   function trySend(){
     const t = totals();
-    if (t.usd < MIN_ORDER_USD){
-      toast('La compra mínima es de 3000$');
-      return;
-    }
+    if (t.usd < MIN_ORDER_USD){ toast('La compra mínima es de 3000$'); return; }
     const txt = buildWaText();
     const url = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(txt)}`;
-    CART = [];
-    updateCart();
-    modal.classList.remove('show');
-    window.location.href = url;
+    CART = []; updateCart(); modal.classList.remove('show'); window.location.href = url;
   }
   sendEl.addEventListener('click', trySend);
   sendM.addEventListener('click', trySend);
@@ -346,33 +307,27 @@
   /* ===================== Init ===================== */
   (async function init(){
     try{
-      const r = await fetch(JSON_URL, { cache: 'no-store' });
+      // cache-buster para forzar a leer lo último del Excel/JSON
+      const r = await fetch(`${JSON_URL}?t=${Date.now()}`, { cache: 'no-store' });
       if(!r.ok) throw new Error('HTTP '+r.status);
       const { items=[], rate=6.96 } = await r.json();
 
-      // normaliza items al formato con variantes + NOMBRE/IMAGEN forzados
+      // Normaliza tus filas tipo Excel (las que pegaste)
+      // Campos esperados de cada fila: TIPO, PRODUCTO, PRESENTACION, UNIDAD, PRECIO (USD), PRECIO (BS)
+      // Si ya vienes con "variantes", esto respeta tu formato.
       ALL = items.map(it=>{
-        // nombre “de entrada” (del JSON)
-        const rawName = it.nombre || it.sku || '';
-        // nombre de exhibición que queremos
-        const displayName = desiredNameFor(rawName);
-
-        // variantes normalizadas
-        const variantes = Array.isArray(it.variantes) ? it.variantes : [{
-          presentacion: it.presentacion || it.pres || '',
-          unidad: it.unidad || '',
-          precio_usd: num(it.precio_usd),
-          precio_bs : num(it.precio_bs)
-        }];
-
-        // imagen: si el JSON trae una, la usamos; si no, la que corresponde al displayName
-        const img = it.imagen || imageFor(displayName);
+        if (Array.isArray(it.variantes)) return it;
 
         return {
-          nombre: displayName,
-          categoria: it.categoria || it.tipo || '',
-          variantes,
-          imagen: img
+          nombre: it.PRODUCTO || it.nombre || it.sku || '',
+          categoria: it.TIPO || it.categoria || it.tipo || '',
+          variantes: [{
+            presentacion: it.PRESENTACION || it.presentacion || it.pres || '',
+            unidad: it.UNIDAD || it.unidad || '',
+            precio_usd: num(it['PRECIO (USD)'] ?? it.precio_usd),
+            precio_bs : num(it['PRECIO (BS)']  ?? it.precio_bs)
+          }],
+          imagen: it.imagen || null
         };
       });
 

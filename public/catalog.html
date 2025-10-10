@@ -5,9 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Catálogo de Productos</title>
 
-  <!-- ICONO / FAVICON (ruta que indicaste) -->
-  <link rel="icon" href="/public/GREENFIELD-REDONDO.png" />
-
+  <!-- Si sirves la carpeta "public" como raíz estática, usa /GREENFIELD-REDONDO.png -->
+  <link rel="icon" href="/GREENFIELD-REDONDO.png" />
   <style>
     :root{
       --brand1:#1F7A4C; --brand2:#2E8B57; --brand3:#6BBF59;
@@ -109,12 +108,11 @@
 <body>
   <div class="wrap">
     <div class="grid">
-      <!-- IZQUIERDA -->
       <div class="card">
         <div class="site-header">
           <div class="brand">
-            <!-- LOGO EN EL HEADER (misma ruta /public/...) -->
-            <img src="/public/GREENFIELD-REDONDO.png" alt="Logo">
+            <!-- Logo visible (mismo archivo que el favicon) -->
+            <img src="/GREENFIELD-REDONDO.png" alt="Logo">
             <div>
               <div class="title">Catálogo de Productos</div>
               <div class="desc">Selecciona presentación y cantidad; añade al carrito para generar tu cotización por WhatsApp.</div>
@@ -125,11 +123,9 @@
             <span class="pill" id="tc">TC 0.00</span>
           </div>
         </div>
-
         <div id="sections" class="section"></div>
       </div>
 
-      <!-- DERECHA -->
       <div class="card">
         <div class="cart">
           <h3>Tu selección</h3>
@@ -142,7 +138,6 @@
     </div>
   </div>
 
-  <!-- FAB carrito (móvil) -->
   <button id="cartFab" class="fab" aria-label="Abrir carrito">
     <span id="cartCount" class="badge" style="display:none">0</span>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -152,7 +147,6 @@
     </svg>
   </button>
 
-  <!-- Modal carrito (móvil) -->
   <div id="cartModal" class="modal" aria-hidden="true">
     <div class="backdrop"></div>
     <div class="sheet">
