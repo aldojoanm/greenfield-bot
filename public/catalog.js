@@ -281,18 +281,25 @@
     totalsEl.innerHTML = `Total: US$ ${fmt2(t.usd)} · Bs ${fmt2(t.bs)}<br><span class="muted">TC ${fmt2(RATE)}</span>`;
   }
 
-  function buildWaText() {
-    const lines = CART.map(it => {
-      const cant   = fmt2(it.cantidad);
-      const unidad = it.unidad ? ` ${it.unidad}` : '';
-      const pres   = it.presentacion ? ` (${it.presentacion})` : '';
-      const subUsd = (it.precio_usd != null ? Number(it.precio_usd) * Number(it.cantidad || 0) : 0);
-      const subBs  = (it.precio_bs  != null ? Number(it.precio_bs)  * Number(it.cantidad || 0) : 0);
-      return `* ${it.nombre}${pres} — ${cant}${unidad} — SUBTOTAL: US$ ${fmt2(subUsd)} · Bs ${fmt2(subBs)}`;
-    });
-    const t = totals();
-    return ['Pedido', ...lines, `TOTAL USD: ${fmt2(t.usd)}`, `TOTAL BS: ${fmt2(t.bs)}`].join('\n');
-  }
+function buildWaText() {
+  const lines = CART.map(it => {
+    const cant   = fmt2(it.cantidad);
+    const unidad = it.unidad ? ` ${it.unidad}` : '';
+    const pres   = it.presentacion ? ` (${it.presentacion})` : '';
+    const subUsd = (it.precio_usd != null ? Number(it.precio_usd) * Number(it.cantidad || 0) : 0);
+    const subBs  = (it.precio_bs  != null ? Number(it.precio_bs)  * Number(it.cantidad || 0) : 0);
+    return `* ${it.nombre}${pres} — ${cant}${unidad} — SUBTOTAL: US$ ${fmt2(subUsd)} · Bs ${fmt2(subBs)}`;
+  });
+
+  const t = totals();
+  return [
+    'CART_V1 GREENFIELD',   // <<--- clave: el backend busca este header
+    ...lines,
+    `TOTAL USD: ${fmt2(t.usd)}`,
+    `TOTAL BS: ${fmt2(t.bs)}`
+  ].join('\n');
+}
+
 
   function trySend(){
     const t = totals();
