@@ -109,7 +109,7 @@ function resolvePriceUSD(idx, { sku, nombre, presentacion }, rate){
   let row = idx.bySku.get(String(sku||'').trim());
   if (!row){
     // 2) Por SKU canónico
-    row = idx.byCanon.get(canonSku(sku||''));
+    row = idx.byCanon.get(canonSku(sku||'')); 
   }
   if (!row && nombre && presentacion){
     // 3) Recomponer sku = nombre-presentación
@@ -118,10 +118,10 @@ function resolvePriceUSD(idx, { sku, nombre, presentacion }, rate){
   }
   if (!row){
     // 4) Por nombre base + pack (20L, 200L, 1KG, ...)
-    const nm = String(nombre||'').trim() || splitSku(String(sku||'')).base;
+    const base = String(nombre||'').trim() || splitSku(String(sku||'')).base;
     const pack = parsePackFromText(String(presentacion||'')) || splitSku(String(sku||'')).pack;
-    if (nm && pack){
-      row = idx.byBasePack.get(`${normName(nm)}|${pack.unit}|${pack.size}`);
+    if (base && pack){
+      row = idx.byBasePack.get(`${normName(base)}|${pack.unit}|${pack.size}`);
     }
   }
   if (!row) return 0;
@@ -140,7 +140,7 @@ export async function buildQuoteFromSession(s, opts={}) {
   const now  = new Date();
 
   // Datos del cliente
-  const nombre   = s.profileName || 'Cliente';
+  const nombre   = s?.profileName || 'Cliente';
   const dep      = s?.vars?.departamento || 'ND';
   const zona     = s?.vars?.subzona || 'ND';
   const cultivo  = (s?.vars?.cultivos||[])[0] || 'ND';
@@ -171,7 +171,6 @@ export async function buildQuoteFromSession(s, opts={}) {
     const line = {
       sku,
       nombre: nombreP || prod?.nombre || sku || '-',
-      ingrediente_activo: prod?.ingrediente_activo || prod?.formulacion || '',
       envase: pres || (Array.isArray(prod?.presentaciones) ? prod.presentaciones.join(', ') : ''),
       unidad: unit || 'UNID',
       cantidad: qtyInf.qty || 0,

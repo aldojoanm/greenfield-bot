@@ -1,16 +1,16 @@
 [
   {
     "id": "greeting",
-    "triggers": ["^hola$", "^buen[oa]s", "empezar", "get_started", "cotizar"],
+    "triggers": ["^hola$", "^buen[oa]s", "empezar", "get_started", "cotizar", "catalogo", "catálogo"],
     "steps": [
-      { "reply": "¡Hola! Soy el asistente de New Chem Agroquímicos 🤝. Te ayudo a escoger rápido el producto adecuado para tu zona." },
-      { "reply": "Para personalizar, ¿en qué departamento produces?", "quick_replies": ["Santa Cruz","Cochabamba","La Paz"] }
+      { "reply": "¡Hola! Soy el asistente de Greenfield 🌱. Te ayudo a escoger rápido el producto adecuado para tu zona." },
+      { "reply": "Para personalizar, ¿en qué departamento produces?", "quick_replies": ["Santa Cruz","Cochabamba","La Paz","Beni","Chuquisaca","Oruro","Pando","Potosí","Tarija"] }
     ],
     "set": { "stage": "greeted" }
   },
   {
     "id": "santa_cruz_subzonas",
-    "triggers": ["santa ?cruz"],
+    "triggers": ["^santa ?cruz$","scz","sc"],
     "steps": [
       { "reply": "Perfecto, Santa Cruz. ¿Qué zona?", "quick_replies": ["Norte","Este","Sur","Valles"] }
     ],
@@ -18,14 +18,14 @@
   },
   {
     "id": "send_catalog",
-    "triggers": ["cat[aá]logo","portafolio","lista de precios"],
+    "triggers": ["cat[aá]logo","portafolio","lista de precios","productos","ver productos"],
     "steps": [
-      { "type": "send_catalog", "reply": "Te envío el catálogo completo 📄. ¿Quieres que te cotice algo puntual?" }
+      { "type": "send_catalog", "reply": "Te envío el catálogo Greenfield 📄. ¿Quieres que te cotice algo puntual?" }
     ]
   },
   {
     "id": "handoff_buy",
-    "triggers": ["quiero comprar","quiero pedir","listo para comprar","cerrar pedido","prepara pedido","enviame proforma","envia proforma"],
+    "triggers": ["quiero comprar","quiero pedir","cerrar pedido","prepara pedido","enviame proforma","envia proforma","asesor"],
     "steps": [
       { "reply": "¡Perfecto! Te conecto con un asesor para cerrar tu pedido. ¿Prefieres seguir por aquí o por WhatsApp?" }
     ],

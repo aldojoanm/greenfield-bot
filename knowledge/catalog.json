@@ -2,7 +2,7 @@
   {
     "sku": "KELIK-KS-1-5-25L",
     "nombre": "Kelik Potasio",
-    "categoria": "Fertilizante potásico + azufre (líquido)",
+    "categoria": "Fertilizantes",
     "composicion": [
       { "componente": "Potasio (K2O) soluble en agua", "pp": "30 % p/p", "pv": "46.5 % p/v" },
       { "componente": "Azufre (S) soluble en agua", "pp": "30 % p/p", "pv": "46.5 % p/v" }
@@ -23,7 +23,7 @@
   {
     "sku": "BALANZER-1-5-6L",
     "nombre": "Balanzer",
-    "categoria": "Bioestimulante metabólico (aminoácidos + fitohormonas)",
+    "categoria": "Bioestimulantes",
     "composicion": [
       { "componente": "Aminoácidos libres", "pp": "12 % p/p" },
       { "componente": "NPK + microelementos traza", "pp": "—" },
@@ -53,7 +53,7 @@
   {
     "sku": "NEWFIX-1-5-20L",
     "nombre": "New Fix",
-    "categoria": "Coadyuvante regulador de pH y antiespumante",
+    "categoria": "Acondicionadores",
     "composicion": [
       { "componente": "Agentes tensioactivos no iónicos", "pp": "15 % p/p" },
       { "componente": "Regulador de pH", "pp": "20 % p/p" },
@@ -80,7 +80,7 @@
   {
     "sku": "VOXY-5-20L",
     "nombre": "Voxy",
-    "categoria": "Fertilizante especial con cobre (inductor de resistencia)",
+    "categoria": "Inductores de Defensa",
     "composicion": [
       { "componente": "Cobre (Cu) complejado", "pp": "5 % p/p" },
       { "componente": "Aditivos sanitizantes", "pp": "—" }
@@ -106,7 +106,7 @@
   {
     "sku": "FITOMARE-1-5-20L",
     "nombre": "Fitomare",
-    "categoria": "Bioestimulante a base de extractos de algas",
+    "categoria": "Bioestimulantes",
     "composicion": [
       { "componente": "Extracto de algas marinas (Ascophyllum nodosum)", "pp": "20 % p/p" },
       { "componente": "Aminoácidos", "pp": "5 % p/p" },
@@ -134,7 +134,7 @@
   {
     "sku": "NITROGREEN-S-50KG",
     "nombre": "NitroGreen S",
-    "categoria": "Fertilizante nitrogenado con azufre (granulado)",
+    "categoria": "Fertilizantes",
     "composicion": [
       { "componente": "Nitrógeno (N)", "pp": "36 % p/p" },
       { "componente": "Azufre (S)", "pp": "10 % p/p" }

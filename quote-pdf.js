@@ -5,19 +5,17 @@ import PDFDocument from 'pdfkit';
 
 const TZ = process.env.TIMEZONE || 'America/La_Paz';
 
-/* ========= Paleta / Marca =========
-   Verde sobrio, gris neutro y acentos suaves
-==================================== */
+/* ========= Paleta sobria ========= */
 const BRAND = {
-  primary:   '#1F7A4C', // verde principal
-  dark:      '#145238', // verde oscuro
-  accent:    '#6BBF59', // verde claro (acentos)
+  primary:   '#1F7A4C',
+  dark:      '#145238',
+  accent:    '#6BBF59',
 };
 
 const TINT = {
-  headerBG:  '#E9F4EE', // encabezado tabla
-  rowBG:     '#F6FBF8', // filas tabla
-  totalBG:   '#DDF0E6', // totales
+  headerBG:  '#E9F4EE',
+  rowBG:     '#F6FBF8',
+  totalBG:   '#DDF0E6',
 };
 
 const GRID = '#6C7A73';
@@ -34,7 +32,7 @@ function normalizeHex(s, fallback = null) {
 const SAFE = {
   headerBG: normalizeHex(TINT.headerBG, '#E6E9EC'),
   rowBG:    normalizeHex(TINT.rowBG,    '#F7F9FB'),
-  totalBG:  normalizeHex(TINT.totalBG,  '#E9C46A'),
+  totalBG:  normalizeHex(TINT.totalBG,  '#E9EDE6'),
   grid:     normalizeHex(GRID,          '#000000'),
 };
 function fillRect(doc, x, y, w, h, color) {
@@ -43,7 +41,7 @@ function fillRect(doc, x, y, w, h, color) {
   doc.rect(x, y, w, h).fill();
   doc.restore();
 }
-function strokeRect(doc, x, y, w, h, color = SAFE.grid, width = 0.9) {
+function strokeRect(doc, x, y, w, h, color = SAFE.grid, width = 0.8) {
   doc.save();
   doc.strokeColor(color).lineWidth(width);
   doc.rect(x, y, w, h).stroke();
@@ -69,70 +67,13 @@ function money(n){
 function round2(n){ return Math.round((Number(n)||0) * 100) / 100; }
 function toCents(n){ return Math.round((Number(n)||0) * 100); }
 function ensure(v, def){ return v==null || v==='' ? def : v; }
-function findAsset(...relPaths){
-  for (const r of relPaths){
-    const p = path.resolve(r);
-    if (fs.existsSync(p)) return p;
-  }
-  return null;
+function findAsset(p){
+  const abs = path.resolve(p);
+  return fs.existsSync(abs) ? abs : null;
 }
 
-/* ========= Lookup de precios / packs ========= */
-function canonSku(s=''){
-  return String(s||'')
-    .trim()
-    .toUpperCase()
-    .replace(/\s+/g,'')
-    .replace(/LTS?|LT|LITROS?/g,'L')
-    .replace(/KGS?|KILOS?/g,'KG');
-}
-function normName(s=''){
-  return String(s||'')
-    .normalize('NFD').replace(/\p{Diacritic}/gu,'')
-    .replace(/[^A-Z0-9]/gi,'')
-    .toUpperCase();
-}
-function parsePackFromText(t=''){
-  const m = String(t||'').match(/(\d+(?:[.,]\d+)?)\s*(L|LT|LTS|LITROS?|KG|KGS?|KILOS?)/i);
-  if (!m) return null;
-  const size = parseFloat(m[1].replace(',','.'));
-  const unit = /KG|KGS?|KILOS?/i.test(m[2]) ? 'KG' : 'L';
-  if (!Number.isFinite(size) || size<=0) return null;
-  return { size, unit };
-}
-function splitSku(s=''){
-  const raw = String(s||'').trim();
-  const i = raw.lastIndexOf('-');
-  if (i < 0) return { base: raw, pack: null, canon: canonSku(raw) };
-  const base = raw.slice(0, i);
-  const tail = raw.slice(i+1);
-  const pack = parsePackFromText(tail) || parsePackFromText('-'+tail) || parsePackFromText(tail.replace(/-/g,' '));
-  return { base, pack, canon: canonSku(raw) };
-}
-function lookupFromCatalog(priceList=[], item={}){
-  if (!Array.isArray(priceList) || !priceList.length) return 0;
-  const cs = canonSku(item.sku||'');
-  let row = priceList.find(r => canonSku(r.sku||'') === cs);
-  if (!row && item.nombre && item.envase){
-    const cs2 = canonSku(`${item.nombre}-${item.envase}`);
-    row = priceList.find(r => canonSku(r.sku||'') === cs2);
-  }
-  if (!row){
-    const nm = String(item.nombre||'').trim() || splitSku(String(item.sku||'')).base;
-    const pack = parsePackFromText(String(item.envase||'')) || splitSku(String(item.sku||'')).pack;
-    if (nm && pack){
-      const nn = normName(nm);
-      row = priceList.find(r=>{
-        const { base, pack: p2 } = splitSku(String(r.sku||''));
-        return base && p2 && normName(base)===nn && p2.unit===pack.unit && Math.abs(p2.size-pack.size)<1e-9;
-      });
-    }
-  }
-  if (!row) return 0;
-  const usd = Number(row?.precio_usd||0);
-  return Number.isFinite(usd) ? usd : 0;
-}
-function detectPackSize(it = {}){
+/* ========= Packs ========= */
+function detectPackSize(it = {}) {
   if (it.envase) {
     const m = String(it.envase).match(/(\d+(?:[.,]\d+)?)\s*(l|lt|lts|litros?|kg|kilos?)/i);
     if (m) {
@@ -159,20 +100,6 @@ function detectPackSize(it = {}){
   }
   return null;
 }
-function roundQuantityByPack(originalQty, pack, itemUnitRaw){
-  if (!pack || !(originalQty > 0)) return originalQty;
-  const itemUnit = String(itemUnitRaw || '').toUpperCase();
-  if (itemUnit && itemUnit !== pack.unit) return originalQty;
-  const ratio = originalQty / pack.size;
-  if (pack.unit === 'KG' && Math.abs(pack.size - 1) < 1e-9) return originalQty; // 1 Kg no redondea
-  if (pack.unit === 'L' && pack.size >= 200) {
-    if (ratio < 1) return pack.size;
-    const mult = Math.floor(ratio + 1e-9);
-    return mult * pack.size;
-  }
-  const mult = Math.ceil(ratio - 1e-9);
-  return mult * pack.size;
-}
 
 /* ========= Render PDF ========= */
 export async function renderQuotePDF(quote, outPath, company = {}){
@@ -188,34 +115,28 @@ export async function renderQuotePDF(quote, outPath, company = {}){
   const xMargin = 36;
   const usableW = pageW - xMargin*2;
 
-  // Assets (logo nuevo)
-  const logoPath = company.logoPath
-    || findAsset('./public/GREENFIELD-REDONDO.png', './GREENFIELD-REDONDO.png', './image/GREENFIELD-REDONDO.png');
-
-  // Marca de agua con el logo
-  if (logoPath){
-    doc.save();
-    doc.opacity(0.08);
-    const mw = 420;
-    const mx = (pageW - mw) / 2;
-    const my = (pageH - mw*0.45) / 2;
-    try { doc.image(logoPath, mx, my, { width: mw }); } catch {}
-    doc.restore();
-  }
+  // Logo opcional (controlado y sin superposición)
+  const logoPath = company.logoPath ? findAsset(company.logoPath) : null;
 
   // Header superior
   let y = 32;
   if (logoPath){
-    try { doc.image(logoPath, xMargin, y, { width: 120 }); } catch {}
+    try { doc.image(logoPath, xMargin, y, { width: 72, fit: [72, 72] }); } catch {}
   }
-  doc.font('Helvetica-Bold').fontSize(14).fillColor(BRAND.dark).text('COTIZACIÓN', 0, y+10, { align: 'center' });
+  const titleX = xMargin + (logoPath ? 84 : 0);
+  doc.font('Helvetica-Bold').fontSize(16).fillColor(BRAND.dark)
+     .text('COTIZACIÓN', titleX, y);
+  if ((company.brandName || '').trim()){
+    doc.font('Helvetica').fontSize(9).fillColor('#4B5563')
+       .text(String(company.brandName).trim(), titleX, y + 18);
+  }
   doc.font('Helvetica').fontSize(9).fillColor('#4B5563')
-     .text(fmtDateTZ(quote.fecha || new Date(), TZ), 0, y+14, { align: 'right' })
+     .text(fmtDateTZ(quote.fecha || new Date(), TZ), 0, y, { align: 'right' })
      .fillColor('black');
 
-  y = 100;
+  y = 90;
 
-  // Cliente
+  // Datos del cliente
   const c = quote.cliente || {};
   const L = (label, val) => {
     doc.font('Helvetica-Bold').fillColor(BRAND.dark).text(`${label}: `, xMargin, y, { continued: true });
@@ -227,25 +148,37 @@ export async function renderQuotePDF(quote, outPath, company = {}){
   L('Zona', c.zona);
   L('Pago', 'Contado');
 
-  y += 16;
+  y += 12;
 
-  /* ===== Tabla (sin Ingrediente Activo) ===== */
+  /* ===== Tabla que AJUSTA a A4 ===== */
   const rate = Number(process.env.USD_BOB_RATE || quote.rate || 6.96);
 
+  // Anchos calculados para sumar EXACTAMENTE 523 pt (A4 - márgenes)
   const cols = [
-    { key:'nombre',       label:'Producto',      w:140, align:'left'  },
-    { key:'envase',       label:'Envase',        w:70,  align:'left'  },
-    { key:'cantidad',     label:'Cantidad',      w:70,  align:'right' },
-    { key:'precio_usd',   label:'Precio (USD)',  w:90,  align:'right' },
-    { key:'precio_bs',    label:'Precio (Bs)',   w:85,  align:'right' },
-    { key:'subtotal_usd', label:'Subtotal (USD)',w:90,  align:'right' },
-    { key:'subtotal_bs',  label:'Subtotal (Bs)', w:90,  align:'right' },
+    { key:'nombre',       label:'Producto',       w:160, align:'left'  },
+    { key:'envase',       label:'Envase',         w:60,  align:'left'  },
+    { key:'cantidad',     label:'Cantidad',       w:55,  align:'right' },
+    { key:'precio_usd',   label:'Precio (USD)',   w:62,  align:'right' },
+    { key:'precio_bs',    label:'Precio (Bs)',    w:62,  align:'right' },
+    { key:'subtotal_usd', label:'Subtotal (USD)', w:62,  align:'right' },
+    { key:'subtotal_bs',  label:'Subtotal (Bs)',  w:62,  align:'right' },
   ];
   const tableX = xMargin;
-  const tableW = cols.reduce((a,c)=>a+c.w,0);
+  const tableW = cols.reduce((a,c)=>a+c.w,0); // 523 exacto
 
-  // Encabezado
-  const headerH = 28;
+  const headerH = 26;
+  const rowPadV = 6;
+  const minRowH = 20;
+
+  const ensureSpace = (need = 90) => {
+    if (y + need > (pageH - 60)){
+      doc.addPage();
+      y = 42;
+      // No watermark ni logo gigante, mantenemos limpio
+    }
+  };
+
+  // Encabezado de tabla
   fillRect(doc, tableX, y, tableW, headerH, SAFE.headerBG);
   doc.fillColor(BRAND.dark).font('Helvetica-Bold').fontSize(9);
   {
@@ -253,30 +186,11 @@ export async function renderQuotePDF(quote, outPath, company = {}){
     for (const cdef of cols){
       const innerX = cx + 6;
       doc.text(cdef.label, innerX, y + (headerH-10)/2, { width: cdef.w-12, align: 'center' });
-      strokeRect(doc, cx, y, cdef.w, headerH, SAFE.grid, 0.9);
+      strokeRect(doc, cx, y, cdef.w, headerH, SAFE.grid, 0.8);
       cx += cdef.w;
     }
   }
   y += headerH;
-
-  const ensureSpace = (need = 90) => {
-    if (y + need > (pageH - 60)){
-      doc.addPage();
-      y = 42;
-      if (logoPath){
-        doc.save();
-        doc.opacity(0.08);
-        const mw = 420;
-        const mx = (pageW - mw) / 2;
-        const my = (pageH - mw*0.45) / 2;
-        try { doc.image(logoPath, mx, my, { width: mw }); } catch {}
-        doc.restore();
-      }
-    }
-  };
-
-  const rowPadV = 6;
-  const minRowH = 20;
 
   doc.fontSize(9).fillColor('black');
 
@@ -286,18 +200,11 @@ export async function renderQuotePDF(quote, outPath, company = {}){
 
   for (const itRaw of (quote.items || [])){
     // 1) Precio unitario
-    let precioUSD = Number(itRaw.precio_usd || 0);
-    if (!(precioUSD > 0)) {
-      precioUSD = lookupFromCatalog(quote.price_catalog || company.priceList || [], itRaw) || 0;
-    }
-    precioUSD = round2(precioUSD);
+    const precioUSD = round2(Number(itRaw.precio_usd || 0));
     const precioBsUnit  = round2(precioUSD * rate);
 
-    // 2) Cantidad (con redondeo por pack si aplica)
-    const cantOrig  = Number(itRaw.cantidad || 0);
-    const pack      = detectPackSize(itRaw);
-    let cantidad = cantOrig;
-    if (pack) cantidad = roundQuantityByPack(cantOrig, pack, itRaw.unidad);
+    // 2) Cantidad (respetar cantidad ingresada, no forzar redondeos aquí)
+    const cantidad = Number(itRaw.cantidad || 0);
 
     // 3) Subtotales
     const subUSD = round2(precioUSD   * cantidad);
@@ -333,7 +240,7 @@ export async function renderQuotePDF(quote, outPath, company = {}){
       const cdef = cols[i];
       const innerX = tx + 6;
       const innerW = cdef.w - 12;
-      strokeRect(doc, tx, y, cdef.w, rowH, SAFE.grid, 0.8);
+      strokeRect(doc, tx, y, cdef.w, rowH, SAFE.grid, 0.7);
       doc.fillColor('#111')
          .font(cdef.key==='nombre' ? 'Helvetica-Bold' : 'Helvetica')
          .text(cellTexts[i], innerX, y + rowPadV, { width: innerW, align: cdef.align || 'left' });
@@ -348,27 +255,26 @@ export async function renderQuotePDF(quote, outPath, company = {}){
 
   ensureSpace(56);
 
-  const wUntilCol5 = cols.slice(0,5).reduce((a,c)=>a+c.w,0); // hasta Precio(Bs)
-  const wCol6      = cols[5].w; // Subtotal USD
-  const wCol7      = cols[6].w; // Subtotal Bs
-
   // Separador
   doc.save();
-  doc.moveTo(tableX, y).lineTo(tableX + tableW, y).strokeColor(SAFE.grid).lineWidth(0.9).stroke();
+  doc.moveTo(tableX, y).lineTo(tableX + tableW, y).strokeColor(SAFE.grid).lineWidth(0.8).stroke();
   doc.restore();
 
   const totalRowH = 26;
+  const wUntilCol5 = cols.slice(0,5).reduce((a,c)=>a+c.w,0); // 160+60+55+62+62 = 399
+  const wCol6      = cols[5].w; // 62
+  const wCol7      = cols[6].w; // 62
 
   // Celda "Total"
-  strokeRect(doc, tableX, y, wUntilCol5, totalRowH, SAFE.grid, 0.9);
+  strokeRect(doc, tableX, y, wUntilCol5, totalRowH, SAFE.grid, 0.8);
   doc.font('Helvetica-Bold').fillColor(BRAND.dark).text('Total', tableX, y+6, { width: wUntilCol5, align: 'center' });
 
   fillRect(doc, tableX + wUntilCol5, y, wCol6, totalRowH, SAFE.totalBG);
   fillRect(doc, tableX + wUntilCol5 + wCol6, y, wCol7, totalRowH, SAFE.totalBG);
 
   // Bordes de totales
-  strokeRect(doc, tableX + wUntilCol5, y, wCol6, totalRowH, SAFE.grid, 0.9);
-  strokeRect(doc, tableX + wUntilCol5 + wCol6, y, wCol7, totalRowH, SAFE.grid, 0.9);
+  strokeRect(doc, tableX + wUntilCol5, y, wCol6, totalRowH, SAFE.grid, 0.8);
+  strokeRect(doc, tableX + wUntilCol5 + wCol6, y, wCol7, totalRowH, SAFE.grid, 0.8);
 
   // Valores
   doc.font('Helvetica-Bold').fillColor(BRAND.dark)
@@ -376,48 +282,48 @@ export async function renderQuotePDF(quote, outPath, company = {}){
   doc.font('Helvetica-Bold').fillColor(BRAND.dark)
      .text(`${money(totalBs)} Bs`, tableX + wUntilCol5 + wCol6 + 6, y+6, { width: wCol7-12, align:'left' });
 
-  y += totalRowH + 18;
+  y += totalRowH + 16;
 
   // Nota precios
   ensureSpace(24);
   doc.font('Helvetica').fontSize(9).fillColor('#374151')
-     .text('Precios referenciales, sujetos a confirmación de stock y cierre comercial.', xMargin, y, { width: usableW });
+     .text('Precios referenciales sujetos a confirmación de stock y condiciones comerciales.', xMargin, y, { width: usableW });
   doc.fillColor('black');
-  y += 22;
+  y += 20;
 
   /* ===== Lugar de entrega + Ubicación + Horarios ===== */
   const drawH2 = (t)=>{
     ensureSpace(24);
     doc.font('Helvetica-Bold').fontSize(11).fillColor(BRAND.dark).text(t, xMargin, y);
     doc.font('Helvetica').fontSize(10).fillColor('#111');
-    y = doc.y + 12;
+    y = doc.y + 10;
   };
+
   drawH2('Lugar de entrega');
   const entrega = [
-    'Almacén Central',
-    'Horarios de atención: Lunes a Viernes de 8:30 a 12:30 y de 2:30 a 6:30'
+    ensure(company.storeName, 'Almacén Central'),
+    'Horarios de atención: Lunes a Viernes 08:30–12:30 y 14:30–18:30'
   ];
-  for (const line of entrega){ ensureSpace(18); doc.text(line, xMargin, y); y = doc.y; }
+  for (const line of entrega){ ensureSpace(16); doc.text(line, xMargin, y); y = doc.y; }
 
-  // Link clickeable Google Maps (el que nos pasaste)
-  const mapsUrl = 'https://share.google/HOzxeQjoNKAFYUaJY';
-  ensureSpace(18);
-  doc.fillColor(BRAND.primary)
-     .text('Ver ubicación en Google Maps', xMargin, y, { width: usableW, link: mapsUrl, underline: true });
-  doc.fillColor('black');
-  y = doc.y + 18;
+  const mapsUrl = (company.mapsUrl || '').trim();
+  if (mapsUrl) {
+    ensureSpace(16);
+    doc.fillColor(BRAND.primary)
+       .text('Ver ubicación en Google Maps', xMargin, y, { width: usableW, link: mapsUrl, underline: true });
+    doc.fillColor('black');
+    y = doc.y + 14;
+  }
 
-  /* ===== Condiciones y validez (actualizadas) ===== */
+  /* ===== Condiciones y validez ===== */
   drawH2('Condiciones y validez de la oferta');
   const conds = [
-    '1) Oferta válida por 3 días calendario a partir de la fecha de emisión y sujeta a disponibilidad.',
-    '2) Los precios pueden variar según volumen y condiciones comerciales acordadas.',
+    '1) Oferta válida por 3 días calendario desde la fecha de emisión y sujeta a disponibilidad.',
+    '2) Los precios pueden ajustarse según volumen y condiciones pactadas.',
     '3) Para fijar precio y reservar volumen se requiere confirmación de pago y emisión de factura.',
-    '4) La entrega se realiza en almacén; podemos apoyar en coordinación logística si el cliente lo requiere.'
+    '4) La entrega se realiza en almacén; se puede apoyar en la coordinación logística si se requiere.'
   ];
-  for (const line of conds){ ensureSpace(18); doc.font('Helvetica').text(line, xMargin, y); y = doc.y; }
-
-  // (Eliminado) aviso “IMPORTANTE” y (Eliminado) sección bancaria/QR
+  for (const line of conds){ ensureSpace(16); doc.font('Helvetica').text(line, xMargin, y); y = doc.y; }
 
   // Cierre
   doc.end();

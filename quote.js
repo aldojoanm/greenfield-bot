@@ -5,13 +5,21 @@ import { buildQuoteFromSession } from './quote-engine.js';
 import { renderQuotePDF } from './quote-pdf.js';
 
 // ===== ENV =====
-const WA_TOKEN       = process.env.WHATSAPP_TOKEN || '';
-const WA_PHONE_ID    = process.env.WHATSAPP_PHONE_ID || '';
-const QUOTES_DIR     = path.resolve('./data/quotes');
-const MAX_CONCURRENCY= parseInt(process.env.QUOTE_MAX_CONCURRENCY || '3', 10);
-const DELETE_AFTER_MS= parseInt(process.env.QUOTE_DELETE_AFTER_MS || (10 * 60 * 1000), 10);
-const MAX_FILE_AGE_MS= parseInt(process.env.QUOTE_MAX_FILE_AGE_MS || (2 * 60 * 60 * 1000), 10);
-const MAX_FILES_KEEP = parseInt(process.env.QUOTE_MAX_FILES_KEEP || '200', 10);
+const WA_TOKEN        = process.env.WHATSAPP_TOKEN || '';
+const WA_PHONE_ID     = process.env.WHATSAPP_PHONE_ID || '';
+const QUOTES_DIR      = path.resolve('./data/quotes');
+const MAX_CONCURRENCY = parseInt(process.env.QUOTE_MAX_CONCURRENCY || '3', 10);
+const DELETE_AFTER_MS = parseInt(process.env.QUOTE_DELETE_AFTER_MS || (10 * 60 * 1000), 10);
+const MAX_FILE_AGE_MS = parseInt(process.env.QUOTE_MAX_FILE_AGE_MS || (2 * 60 * 60 * 1000), 10);
+const MAX_FILES_KEEP  = parseInt(process.env.QUOTE_MAX_FILES_KEEP || '200', 10);
+
+// Branding/ajustes opcionales (no se imprime ningún nombre fijo)
+const COMPANY = {
+  brandName: (process.env.BRAND_NAME || '').trim(),       // opcional, puede ir vacío
+  logoPath:  (process.env.LOGO_PATH  || '').trim() || null,
+  mapsUrl:   (process.env.MAPS_URL   || '').trim() || null,
+  storeName: (process.env.STORE_NAME || 'Almacén Central').trim(),
+};
 
 try { fs.mkdirSync(QUOTES_DIR, { recursive:true }); } catch {}
 
@@ -53,7 +61,7 @@ function _cleanupOldQuotes() {
     }
   }catch{}
 }
-setInterval(_cleanupOldQuotes, 30 * 60 * 1000).unref();
+setInterval(_cleanupOldQuotes, 30 * 60 * 1000).unref?.();
 
 // ===== WhatsApp helpers =====
 async function waUploadMediaFromFile(filePath, mime='application/pdf'){
@@ -108,26 +116,36 @@ export async function sendAutoQuotePDF(to, session){
   try{
     const quote = await buildQuoteFromSession(session);
 
-    const cleanName = (s='') => String(s).normalize('NFD').replace(/\p{Diacritic}/gu,'').replace(/[\\/:*?"<>|]+/g,'').replace(/\s+/g,' ').trim().slice(0,80);
+    const cleanName = (s='') => String(s)
+      .normalize('NFD').replace(/\p{Diacritic}/gu,'')
+      .replace(/[\\/:*?"<>|]+/g,'')
+      .replace(/\s+/g,' ').trim()
+      .slice(0,80);
+
     const clienteName = cleanName(quote?.cliente?.nombre || session?.profileName || 'Cliente');
 
     // Nombre interno (archivo en disco) con timestamp para evitar colisiones
     const stamp = new Date().toISOString().replace(/[:.]/g,'-');
     const filenameFS = `${cleanName(`COT - ${clienteName} - ${stamp}`)}.pdf`;
 
-    // Nombre visible para WhatsApp
-    const filenameDisplay = (cleanName(`COT NEW CHEM AGROQUIMICOS - ${clienteName}`)).toUpperCase() + `.pdf`;
+    // Nombre visible para WhatsApp (neutral)
+    const filenameDisplay = `${cleanName(`COTIZACION - ${clienteName}`)}.pdf`;
 
     const outDir = path.resolve('./data/quotes');
     try { fs.mkdirSync(outDir, { recursive:true }); } catch {}
     const filePath = path.join(outDir, filenameFS);
 
-    await renderQuotePDF(quote, filePath, { brand: 'New Chem Agroquímicos' });
+    await renderQuotePDF(quote, filePath, {
+      brandName: COMPANY.brandName,
+      logoPath: COMPANY.logoPath,
+      mapsUrl: COMPANY.mapsUrl,
+      storeName: COMPANY.storeName
+    });
 
     const mediaId = await waUploadMediaFromFile(filePath, 'application/pdf');
     if (!mediaId) throw new Error('No se pudo subir el PDF a WhatsApp.');
 
-    const caption = `Cotización - ${clienteName}`;
+    const caption = `Cotización — ${clienteName}`;
     const ok = await waSendDocument(to, mediaId, filenameDisplay, caption);
     if (!ok) throw new Error('No se pudo enviar el PDF por WhatsApp.');
 

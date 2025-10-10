@@ -1,5 +1,5 @@
 {
-  "greeting": "¡Hola! Soy el asistente virtual de New Chem Agroquímicos.",
+  "greeting": "¡Hola! Soy el asistente virtual de Greenfield.",
   "ask_zone": {
     "text": "Para adaptar la recomendación, ¿en qué departamento produces?",
     "options": ["Santa Cruz", "Cochabamba", "La Paz"]
