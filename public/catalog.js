@@ -2,18 +2,18 @@
   const MIN_ORDER_USD = 3000;
 
   const WA_NUMBER = (document.documentElement.getAttribute('data-wa-number') || '59162239865')
-  .replace(/\D/g,'');
+    .replace(/\D/g,'');
 
-  const root      = document.documentElement;
-  const JSON_URL  = root.getAttribute('data-json-url') || '/api/catalog';
+  const root     = document.documentElement;
+  const JSON_URL = root.getAttribute('data-json-url') || '/api/catalog';
 
   // DOM
-  const $       = s => document.querySelector(s);
-  const secEl   = $('#sections');
-  const cartEl  = $('#cart');
-  const totalsEl= $('#totals');
-  const sendEl  = $('#send');
-  const tcEl    = $('#tc');
+  const $        = s => document.querySelector(s);
+  const secEl    = $('#sections');
+  const cartEl   = $('#cart');
+  const totalsEl = $('#totals');
+  const sendEl   = $('#send');
+  const tcEl     = $('#tc');
 
   // móvil
   const fab       = $('#cartFab');
@@ -38,8 +38,21 @@
   let RATE = 6.96;
   let CART = [];
 
-  // ==== IMÁGENES ====
-  // Mapeo explícito a tus archivos .jpeg (insensible a mayúsculas).
+  // ========= NOMBRES deseados y mapeos ====
+  // Si tu JSON trae nombres antiguos (DRIER, GLISATO, etc.),
+  // aquí forzamos el nombre de exhibición correcto.
+  const NAME_OVERRIDES = {
+    DRIER: 'Balanzer',
+    GLISATO: 'Fitomare',
+    FIX: 'Fix',
+    KELIK: 'Kelik',
+    NITROGREEN: 'NitroGreen',
+    VOXY: 'Voxy'
+  };
+
+  // ========= IMÁGENES (case-sensitive) ====
+  // Asegúrate de que estos archivos existan EXACTAMENTE así:
+  // /image/Balanzer.jpeg, /image/Fitomare.jpeg, etc.
   const IMAGE_MAP = {
     BALANZER: '/image/Balanzer.jpeg',
     FITOMARE: '/image/Fitomare.jpeg',
@@ -57,21 +70,19 @@
     return m ? Number(m[0]) : 0;
   };
   const fmt2 = n => (Number(n)||0).toFixed(2);
+  const onlyKey = s => String(s||'').normalize('NFD').replace(/\p{Diacritic}/gu,'').replace(/\W+/g,'').toUpperCase();
   const packFromPres = pres => {
     const m = String(pres||'').match(/(\d+(?:\.\d+)?)/);
     return m ? Number(m[1]) : 1;
   };
 
-  // Resuelve imagen:
-  // 1) si viene en JSON, úsala;
-  // 2) si coincide con el MAP por nombre; 
-  // 3) intenta .jpeg y .png por defecto;
-  // 4) placeholder.
-  function guessImagePath(name){
-    const key = String(name||'').replace(/\s+/g,'').toUpperCase();
-    if (IMAGE_MAP[key]) return IMAGE_MAP[key];
-    const base = `/image/${key}`;
-    return `${base}.jpeg`;
+  function desiredNameFor(rawName){
+    const k = onlyKey(rawName);
+    return NAME_OVERRIDES[k] || rawName || '';
+  }
+  function imageFor(displayName){
+    const k = onlyKey(displayName);
+    return IMAGE_MAP[k] || '/image/placeholder.png';
   }
 
   /* ===================== UI: secciones ===================== */
@@ -104,7 +115,7 @@
 
     const usd0 = num(first.precio_usd);
     const bs0  = num(first.precio_bs) || +(usd0 * RATE).toFixed(2);
-    const imgSrc = item.imagen || guessImagePath(item.nombre);
+    const imgSrc = item.imagen || imageFor(item.nombre);
 
     return `
       <div class="prod" data-name="${esc(item.nombre)}">
@@ -296,7 +307,7 @@
     totalsEl.innerHTML = `Total: US$ ${fmt2(t.usd)} · Bs ${fmt2(t.bs)}<br><span class="muted">TC ${fmt2(RATE)}</span>`;
   }
 
-  // Texto neutro para WhatsApp (sin marcas)
+  // Texto para WhatsApp
   function buildWaText() {
     const lines = CART.map(it => {
       const cant   = fmt2(it.cantidad);
@@ -339,20 +350,29 @@
       if(!r.ok) throw new Error('HTTP '+r.status);
       const { items=[], rate=6.96 } = await r.json();
 
-      // normaliza items al formato con variantes
+      // normaliza items al formato con variantes + NOMBRE/IMAGEN forzados
       ALL = items.map(it=>{
-        if (Array.isArray(it.variantes)) return it;
-        const v = [{
+        // nombre “de entrada” (del JSON)
+        const rawName = it.nombre || it.sku || '';
+        // nombre de exhibición que queremos
+        const displayName = desiredNameFor(rawName);
+
+        // variantes normalizadas
+        const variantes = Array.isArray(it.variantes) ? it.variantes : [{
           presentacion: it.presentacion || it.pres || '',
           unidad: it.unidad || '',
           precio_usd: num(it.precio_usd),
           precio_bs : num(it.precio_bs)
         }];
+
+        // imagen: si el JSON trae una, la usamos; si no, la que corresponde al displayName
+        const img = it.imagen || imageFor(displayName);
+
         return {
-          nombre: it.nombre || it.sku || '',
+          nombre: displayName,
           categoria: it.categoria || it.tipo || '',
-          variantes: v,
-          imagen: it.imagen || null
+          variantes,
+          imagen: img
         };
       });
 

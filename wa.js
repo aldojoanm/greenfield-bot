@@ -22,7 +22,7 @@ const upload = multer({
 const VERIFY_TOKEN    = process.env.VERIFY_TOKEN || 'VERIFY_123';
 const WA_TOKEN        = process.env.WHATSAPP_TOKEN || '';
 const WA_PHONE_ID     = process.env.WHATSAPP_PHONE_ID || '';
-const CATALOG_URL     = process.env.CATALOG_URL || 'https://tinyurl.com/f4euhvzk';
+const CATALOG_URL     = process.env.CATALOG_URL || 'https://greenfield-bot.onrender.com/catalog.html';
 const STORE_LAT       = process.env.STORE_LAT || '-17.7580406';
 const STORE_LNG       = process.env.STORE_LNG || '-63.1532503';
 const PUBLIC_BASE_URL = (process.env.PUBLIC_BASE_URL || '').replace(/\/+$/, '');
@@ -30,7 +30,7 @@ const AGENT_TOKEN     = process.env.AGENT_TOKEN || '';
 
 const DEBUG_LOGS = process.env.DEBUG_LOGS === '1';
 const dbg = (...args) => { if (DEBUG_LOGS) console.log(...args); };
-const ADVISOR_NAME = process.env.ADVISOR_NAME || 'Jonathan Arteaga';
+const ADVISOR_NAME = process.env.ADVISOR_NAME || 'PERSONAL DE VENTAS';
 const ADVISOR_ROLE = process.env.ADVISOR_ROLE || 'Encargado de Negocios de Greenfield Agroquímicos';
 
 const CAMP_VERANO_MONTHS = (process.env.CAMPANA_VERANO_MONTHS || '10,11,12,1,2,3')
