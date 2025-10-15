@@ -33,7 +33,7 @@
     .pill{display:inline-block;border:1px solid var(--ring);border-radius:999px;padding:6px 10px}
     .pill.brand{border-color:transparent;background:linear-gradient(90deg,var(--brand1),var(--brand2));color:#fff;font-weight:700}
 
-    /* === FILTROS (arriba, primero) === */
+    /* FILTROS */
     .filters{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px 18px 4px;border-bottom:1px solid var(--ring)}
     .filters .field{display:flex;flex-direction:column;gap:6px}
     .filters label{font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.2px}
@@ -45,12 +45,8 @@
     .list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
     @media (max-width:900px){ .list{grid-template-columns:1fr} }
 
-    .prod{
-      display:grid;grid-template-columns:1fr;grid-template-areas:
-        "name" "img" "price" "pres" "qty" "btn";
-      gap:12px;padding:16px;border:1px solid var(--ring);
-      border-radius:16px;background:#fff;min-width:0
-    }
+    .prod{display:grid;grid-template-columns:1fr;grid-template-areas:"name" "img" "price" "pres" "qty" "btn";
+          gap:12px;padding:16px;border:1px solid var(--ring);border-radius:16px;background:#fff;min-width:0}
     .prod .name{grid-area:name}
     .prod .img{grid-area:img}
     .prod .price-note{grid-area:price}
@@ -58,11 +54,8 @@
     .prod .qty-wrap{grid-area:qty}
     .prod .btn-wrap{grid-area:btn}
 
-    .img img{
-      width:100%;max-width:420px;margin-inline:auto;
-      aspect-ratio:1/1;object-fit:contain;border:1px solid var(--ring);
-      border-radius:14px;background:#f5fbf6;display:block
-    }
+    .img img{width:100%;max-width:420px;margin-inline:auto;aspect-ratio:1/1;object-fit:contain;border:1px solid var(--ring);
+             border-radius:14px;background:#f5fbf6;display:block}
     .name{font-weight:900;font-size:18px;min-width:0}
     .cat{margin-top:6px}
     .cat .tag{display:inline-block;background:rgba(31,122,76,.12);color:var(--brand1);
@@ -77,10 +70,7 @@
 
     .cart{padding:16px}
     .cart h3{margin:0 0 10px;font-size:18px}
-    .item{
-      display:grid;grid-template-columns:1fr 90px 140px 28px;gap:10px;align-items:center;
-      padding:10px 0;border-bottom:1px solid var(--ring)
-    }
+    .item{display:grid;grid-template-columns:1fr 90px 140px 28px;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--ring)}
     .item > div:first-child{min-width:0}
     .item > div:first-child strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .item input{width:100%;padding:8px 10px;border:1px solid var(--ring);border-radius:10px}
@@ -92,8 +82,7 @@
     .empty{color:var(--muted);padding:8px}
 
     .fab{position:fixed;right:18px;bottom:18px;background:linear-gradient(90deg,var(--brand1),var(--brand2));
-         width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-         color:#fff;box-shadow:var(--shadow);cursor:pointer;z-index:30}
+         width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:var(--shadow);cursor:pointer;z-index:30}
     .badge{position:absolute;top:-6px;right:-6px;background:#ee5858;color:#fff;border-radius:999px;padding:2px 6px;font-size:12px;font-weight:800}
     .fab svg{width:26px;height:26px}
     .modal{position:fixed;inset:0;display:none;z-index:40}
@@ -127,7 +116,7 @@
             <span class="pill" id="tc">TC 0.00</span>
           </div>
 
-          <!-- === FILTROS (siempre primero) === -->
+          <!-- FILTROS -->
           <div class="filters" id="filters">
             <div class="field">
               <label for="catFilter">Categoría</label>
@@ -144,7 +133,6 @@
               </select>
             </div>
           </div>
-          <!-- === FIN FILTROS === -->
         </div>
 
         <div id="sections" class="section"></div>

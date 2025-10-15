@@ -44,7 +44,7 @@
   let CART = [];
   let FILTERS = { category: '__ALL__', sort: 'price_desc' };
 
-  // ==== IMÁGENES ====
+  // ==== IMÁGENES ==== (intenta /image/NombreSinEspacios.jpeg)
   function guessImagePath(name){
     const key = String(name||'').replace(/\s+/g,'');
     return `/image/${key}.jpeg`;
@@ -58,12 +58,28 @@
     return m ? Number(m[0]) : 0;
   };
   const fmt2 = n => (Number(n)||0).toFixed(2);
+
+  // Normaliza "presentación": extrae la cantidad y la unidad
+  // ej: "BORO-1 L" -> "1 L", "TRACTOR-25Kg" -> "25 Kg"
+  function normalizePres(pres='', unidad=''){
+    const txt = String(pres).replace(',', '.');
+    const m = txt.match(/(\d+(?:\.\d+)?)\s*(L|Kg)\b/i);
+    if (m) return `${m[1].replace('.', ',')} ${m[2]}`;
+    // si no trajo unidad en la cadena, arma con la unidad de la fila
+    const m2 = txt.match(/(\d+(?:\.\d+)?)/);
+    if (m2){
+      const un = (String(unidad||'').trim() || '').replace(/^(l|kg)$/i, s => s.toUpperCase());
+      return `${m2[1].replace('.', ',')} ${un || ''}`.trim();
+    }
+    return pres || unidad || '';
+  }
+
   const packFromPres = pres => {
-    const m = String(pres||'').match(/(\d+(?:\.\d+)?)/);
+    const m = String(pres||'').replace(',', '.').match(/(\d+(?:\.\d+)?)/);
     return m ? Number(m[1]) : 1;
   };
 
-  // === helpers de filtros/orden ===
+  // helpers filtros/orden
   const itemMaxUsd = (it) => {
     const vs = Array.isArray(it.variantes) ? it.variantes : [];
     if(!vs.length) return 0;
@@ -77,13 +93,12 @@
   };
 
   function uniqueCategories(list){
-    const set = new Set(list.map(x => String(x.categoria||'').trim() || 'SIN CATEGORÍA'));
+    const set = new Set(list.map(x => (String(x.categoria||'').trim() || 'SIN CATEGORÍA')));
     return Array.from(set).sort((a,b)=> a.localeCompare(b,'es'));
   }
 
   function applyFilters(list){
     let rows = list.slice();
-
     if (FILTERS.category && FILTERS.category !== '__ALL__'){
       rows = rows.filter(x => String(x.categoria||'').trim() === FILTERS.category);
     }
@@ -97,14 +112,9 @@
     return rows;
   }
 
-  /* ===================== UI: secciones ===================== */
+  /* ===================== UI ===================== */
   function displayPres(v){
-    const pres = String(v.presentacion||'').trim();
-    const un   = String(v.unidad||'').trim();
-    if (!pres) return un ? `— ${un}` : '—';
-    // si ya trae L o Kg, lo dejamos; si no, agregamos unidad
-    if (/\b(L|Kg)\b/i.test(pres)) return pres;
-    return un ? `${pres} ${un}` : pres;
+    return normalizePres(v.presentacion, v.unidad);
   }
 
   function renderSections(){
@@ -169,7 +179,7 @@
 
       function getData(){
         const p = ALL.find(x=>x.nombre===name);
-        const v = p?.variantes?.[num(presSel.value)] || { precio_usd:0, precio_bs:0, unidad:'', presentacion:'' };
+        const v = p?.variantes?.[Number(presSel.value)] || { precio_usd:0, precio_bs:0, unidad:'', presentacion:'' };
         return { p, v };
       }
       function isAvailable(v){
@@ -233,9 +243,11 @@
           return;
         }
 
+        const presClean = displayPres(v);
+
         upsertCart({
           nombre: p.nombre,
-          presentacion: displayPres(v),
+          presentacion: presClean,
           unidad: v.unidad || '',
           cantidad,
           precio_usd: num(v.precio_usd) || 0,
@@ -262,7 +274,7 @@
   }
   const totals = () => ({
     usd: CART.reduce((a,x)=> a + x.precio_usd * x.cantidad, 0),
-    bs : CART.reduce((a,x)=> a + x.precicio_bs  * x.cantidad, 0)
+    bs : CART.reduce((a,x)=> a + x.precio_bs  * x.cantidad, 0)
   });
 
   function updateCart(){
@@ -359,7 +371,7 @@
   sendEl.addEventListener('click', trySend);
   sendM.addEventListener('click', trySend);
 
-  // === eventos filtros ===
+  // === filtros ===
   function bindFilters(){
     catSel.addEventListener('change', ()=>{
       FILTERS.category = catSel.value || '__ALL__';
@@ -373,18 +385,8 @@
 
   function fillCategoryOptions(cats){
     const current = catSel.value;
-    catSel.innerHTML = `<option value="__ALL__">Todas</option>` + 
+    catSel.innerHTML = `<option value="__ALL__">Todas</option>` +
       cats.map(c => `<option value="${esc(c)}"${c===current?' selected':''}>${esc(c)}</option>`).join('');
-  }
-
-  // === MAPEO A TUS 3 CATEGORÍAS ===
-  const CAT_TARGETS = ['BIOESTIMULANTES','FERTILIZANTES','ACONDICIONADORES'];
-  function mapCategory(raw){
-    const s = String(raw||'').toLowerCase();
-    if (s.includes('bioestimul')) return 'BIOESTIMULANTES';
-    if (s.includes('tecnología de aplicación') || s.includes('enmiendas')) return 'ACONDICIONADORES';
-    // fertilizantes: granulados, npk líquidos y sólidos, micro/macro, multisitio/inductores (voxy)
-    return 'FERTILIZANTES';
   }
 
   /* ===================== Init ===================== */
@@ -394,35 +396,31 @@
       if(!r.ok) throw new Error('HTTP '+r.status);
       const { items=[], rate=6.96 } = await r.json();
 
-      // Normaliza filas "tipo excel"
+      // Normaliza filas simple tipo Excel
       ALL = items.map(it=>{
         if (Array.isArray(it.variantes)) {
-          // fuerza categorías al set de 3
-          it.categoria = CAT_TARGETS.includes(it.categoria) ? it.categoria : mapCategory(it.categoria);
-          // asegura que cada variante tenga presentación "N + unidad"
+          // normaliza presentaciones dentro de variantes
           it.variantes = it.variantes.map(v=>{
-            const un = v.unidad || '';
-            const pres = String(v.presentacion||'').trim();
-            const presTxt = /\b(L|Kg)\b/i.test(pres) ? pres : (un ? `${pres} ${un}` : pres);
-            return { ...v, presentacion: presTxt, unidad: un };
+            return {
+              ...v,
+              presentacion: normalizePres(v.presentacion, v.unidad),
+            };
           });
           return it;
         }
 
         const nombre = it.PRODUCTO || it.nombre || it.sku || '';
-        const rawCat = it.TIPO || it.categoria || it.tipo || '';
-        const categoria = CAT_TARGETS.includes(rawCat) ? rawCat : mapCategory(rawCat);
-
-        const un  = String(it.UNIDAD || it.unidad || '').trim();
+        const categoria = it.TIPO || it.categoria || it.tipo || '';
+        const unidad  = String(it.UNIDAD || it.unidad || '').trim();
         const presBase = String(it.PRESENTACION || it.presentacion || it.pres || '').trim();
-        const presTxt  = /\b(L|Kg)\b/i.test(presBase) ? presBase : (un ? `${presBase} ${un}` : presBase);
+        const presTxt  = normalizePres(presBase, unidad);
 
         return {
           nombre,
           categoria,
           variantes: [{
             presentacion: presTxt,
-            unidad: un,
+            unidad: unidad,
             precio_usd: num(it['PRECIO (USD)'] ?? it.precio_usd),
             precio_bs : num(it['PRECIO (BS)']  ?? it.precio_bs)
           }],
@@ -433,8 +431,8 @@
       RATE = Number(rate) || 6.96;
       tcEl.textContent = `TC ${fmt2(RATE)}`;
 
-      // Filtros: solo las 3
-      fillCategoryOptions(CAT_TARGETS);
+      // Filtros (exactamente las categorías del Excel/JSON)
+      fillCategoryOptions(uniqueCategories(ALL));
       bindFilters();
 
       renderSections();
