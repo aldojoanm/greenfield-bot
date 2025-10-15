@@ -84,12 +84,9 @@
   function applyFilters(list){
     let rows = list.slice();
 
-    // categoría
     if (FILTERS.category && FILTERS.category !== '__ALL__'){
       rows = rows.filter(x => String(x.categoria||'').trim() === FILTERS.category);
     }
-
-    // orden
     if (FILTERS.sort === 'price_desc'){
       rows.sort((a,b)=> itemMaxUsd(b) - itemMaxUsd(a));
     } else if (FILTERS.sort === 'price_asc'){
@@ -97,15 +94,21 @@
     } else {
       rows.sort((a,b)=> a.nombre.localeCompare(b.nombre,'es'));
     }
-
     return rows;
   }
 
   /* ===================== UI: secciones ===================== */
+  function displayPres(v){
+    const pres = String(v.presentacion||'').trim();
+    const un   = String(v.unidad||'').trim();
+    if (!pres) return un ? `— ${un}` : '—';
+    // si ya trae L o Kg, lo dejamos; si no, agregamos unidad
+    if (/\b(L|Kg)\b/i.test(pres)) return pres;
+    return un ? `${pres} ${un}` : pres;
+  }
+
   function renderSections(){
     const filtered = applyFilters(ALL);
-
-    // agrupado por categoría (si hay filtro de categoría, sólo muestra esa)
     const cats = {};
     for (const it of filtered){
       const k = String(it.categoria||'').trim() || 'SIN CATEGORÍA';
@@ -128,12 +131,13 @@
     const first = v[0] || { precio_usd:0, precio_bs:0, unidad:'', presentacion:'' };
 
     const opts = v.map((vx, i) =>
-      `<option value="${i}" data-usd="${vx.precio_usd}" data-bs="${vx.precio_bs}" data-un="${esc(vx.unidad)}">${esc(vx.presentacion||'')}</option>`
+      `<option value="${i}" data-usd="${vx.precio_usd}" data-bs="${vx.precio_bs}" data-un="${esc(vx.unidad)}">${esc(displayPres(vx))}</option>`
     ).join('') || `<option value="">—</option>`;
 
     const usd0 = num(first.precio_usd);
     const bs0  = num(first.precio_bs) || +(usd0 * RATE).toFixed(2);
     const imgSrc = item.imagen || guessImagePath(item.nombre);
+    const unitText = first.unidad ? ` / ${esc(first.unidad)}` : '';
 
     return `
       <div class="prod" data-name="${esc(item.nombre)}">
@@ -142,7 +146,7 @@
           <div class="cat"><span class="tag">${esc(item.categoria||'')}</span></div>
         </div>
         <div class="img"><img src="${esc(imgSrc)}" alt="${esc(item.nombre)}" onerror="this.src='/image/placeholder.png'"></div>
-        <div class="price-note">Precio unidad: <strong>US$ ${fmt2(usd0)}</strong> · <strong>Bs ${fmt2(bs0)}</strong></div>
+        <div class="price-note">Precio unidad: <strong>US$ ${fmt2(usd0)}${unitText}</strong> · <strong>Bs ${fmt2(bs0)}${unitText}</strong></div>
         <div class="pres-wrap"><select class="pres">${opts}</select></div>
         <div class="qty-wrap">
           <input class="qty" placeholder="Cantidad" inputmode="decimal">
@@ -181,7 +185,8 @@
         subtEl.textContent = `US$ ${fmt2(usd*qn)} · Bs ${fmt2(bs*qn)}`;
 
         const pn = row.querySelector('.price-note');
-        pn.innerHTML = `Precio unidad: <strong>US$ ${fmt2(usd)}</strong> · <strong>Bs ${fmt2(bs)}</strong>`;
+        const unitText = v.unidad ? ` / ${esc(v.unidad)}` : '';
+        pn.innerHTML = `Precio unidad: <strong>US$ ${fmt2(usd)}${unitText}</strong> · <strong>Bs ${fmt2(bs)}${unitText}</strong>`;
 
         const available = isAvailable(v);
         addBtn.disabled = !available;
@@ -190,7 +195,9 @@
         }
 
         const pack = packFromPres(v.presentacion);
-        qtyEl.placeholder = pack > 1 ? `Cantidad (múltiplos de ${pack})` : 'Cantidad';
+        qtyEl.placeholder = pack > 1
+          ? `Cantidad (múltiplos de ${pack}${v.unidad ? ' ' + v.unidad : ''})`
+          : 'Cantidad';
       }
 
       function selectFirstAvailable(){
@@ -228,7 +235,7 @@
 
         upsertCart({
           nombre: p.nombre,
-          presentacion: v.presentacion || '',
+          presentacion: displayPres(v),
           unidad: v.unidad || '',
           cantidad,
           precio_usd: num(v.precio_usd) || 0,
@@ -255,7 +262,7 @@
   }
   const totals = () => ({
     usd: CART.reduce((a,x)=> a + x.precio_usd * x.cantidad, 0),
-    bs : CART.reduce((a,x)=> a + x.precio_bs  * x.cantidad, 0)
+    bs : CART.reduce((a,x)=> a + x.precicio_bs  * x.cantidad, 0)
   });
 
   function updateCart(){
@@ -293,7 +300,7 @@
       paintTotals();
     }
 
-    // modal móvil (refresco)
+    // modal móvil
     cartM.innerHTML = cartEl.innerHTML || `<div class="empty">Tu carrito está vacío.</div>`;
     totalsM.innerHTML = totalsEl.innerHTML || '';
     cartM.querySelectorAll('.rm').forEach(b=> b.addEventListener('click',()=> removeAt(+b.getAttribute('data-i'))));
@@ -308,12 +315,10 @@
       });
     });
 
-    // badge
     const count = CART.reduce((a,x)=> a + (num(x.cantidad) ? 1 : 0), 0);
     cartBadge.style.display = count>0 ? 'inline-block' : 'none';
     if (count>0) cartBadge.textContent = String(count);
 
-    // mínimo
     const t = totals();
     const okMin = t.usd >= MIN_ORDER_USD;
     sendEl.disabled = !okMin || CART.length===0;
@@ -372,6 +377,16 @@
       cats.map(c => `<option value="${esc(c)}"${c===current?' selected':''}>${esc(c)}</option>`).join('');
   }
 
+  // === MAPEO A TUS 3 CATEGORÍAS ===
+  const CAT_TARGETS = ['BIOESTIMULANTES','FERTILIZANTES','ACONDICIONADORES'];
+  function mapCategory(raw){
+    const s = String(raw||'').toLowerCase();
+    if (s.includes('bioestimul')) return 'BIOESTIMULANTES';
+    if (s.includes('tecnología de aplicación') || s.includes('enmiendas')) return 'ACONDICIONADORES';
+    // fertilizantes: granulados, npk líquidos y sólidos, micro/macro, multisitio/inductores (voxy)
+    return 'FERTILIZANTES';
+  }
+
   /* ===================== Init ===================== */
   (async function init(){
     try{
@@ -379,15 +394,35 @@
       if(!r.ok) throw new Error('HTTP '+r.status);
       const { items=[], rate=6.96 } = await r.json();
 
+      // Normaliza filas "tipo excel"
       ALL = items.map(it=>{
-        if (Array.isArray(it.variantes)) return it;
+        if (Array.isArray(it.variantes)) {
+          // fuerza categorías al set de 3
+          it.categoria = CAT_TARGETS.includes(it.categoria) ? it.categoria : mapCategory(it.categoria);
+          // asegura que cada variante tenga presentación "N + unidad"
+          it.variantes = it.variantes.map(v=>{
+            const un = v.unidad || '';
+            const pres = String(v.presentacion||'').trim();
+            const presTxt = /\b(L|Kg)\b/i.test(pres) ? pres : (un ? `${pres} ${un}` : pres);
+            return { ...v, presentacion: presTxt, unidad: un };
+          });
+          return it;
+        }
+
+        const nombre = it.PRODUCTO || it.nombre || it.sku || '';
+        const rawCat = it.TIPO || it.categoria || it.tipo || '';
+        const categoria = CAT_TARGETS.includes(rawCat) ? rawCat : mapCategory(rawCat);
+
+        const un  = String(it.UNIDAD || it.unidad || '').trim();
+        const presBase = String(it.PRESENTACION || it.presentacion || it.pres || '').trim();
+        const presTxt  = /\b(L|Kg)\b/i.test(presBase) ? presBase : (un ? `${presBase} ${un}` : presBase);
 
         return {
-          nombre: it.PRODUCTO || it.nombre || it.sku || '',
-          categoria: it.TIPO || it.categoria || it.tipo || '',
+          nombre,
+          categoria,
           variantes: [{
-            presentacion: it.PRESENTACION || it.presentacion || it.pres || '',
-            unidad: it.UNIDAD || it.unidad || '',
+            presentacion: presTxt,
+            unidad: un,
             precio_usd: num(it['PRECIO (USD)'] ?? it.precio_usd),
             precio_bs : num(it['PRECIO (BS)']  ?? it.precio_bs)
           }],
@@ -398,8 +433,8 @@
       RATE = Number(rate) || 6.96;
       tcEl.textContent = `TC ${fmt2(RATE)}`;
 
-      // Filtros
-      fillCategoryOptions(uniqueCategories(ALL));
+      // Filtros: solo las 3
+      fillCategoryOptions(CAT_TARGETS);
       bindFilters();
 
       renderSections();
@@ -410,7 +445,7 @@
       cartEl.innerHTML = `<div class="empty">Tu carrito está vacío.</div>`;
       totalsEl.innerHTML = '';
       sendEl.disabled = true;
-      sendM.disabled = true; 
+      sendM.disabled = true;
     }
   })();
 })();
