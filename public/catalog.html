@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Catálogo de Productos</title>
 
-  <!-- Si sirves la carpeta "public" como raíz estática, usa /GREENFIELD-REDONDO.png -->
   <link rel="icon" href="/GREENFIELD-REDONDO.png" />
   <style>
     :root{
@@ -33,6 +32,12 @@
     .meta{display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:13px;padding:10px 0 2px}
     .pill{display:inline-block;border:1px solid var(--ring);border-radius:999px;padding:6px 10px}
     .pill.brand{border-color:transparent;background:linear-gradient(90deg,var(--brand1),var(--brand2));color:#fff;font-weight:700}
+
+    /* === FILTROS (arriba, primero) === */
+    .filters{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px 18px 4px;border-bottom:1px solid var(--ring)}
+    .filters .field{display:flex;flex-direction:column;gap:6px}
+    .filters label{font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.2px}
+    .filters select{padding:10px 12px;border:1px solid var(--ring);border-radius:12px;background:#fff}
 
     .section{padding:8px 18px 18px}
     .section-title{display:flex;align-items:center;gap:10px;margin:8px 0 14px;font-weight:900;font-size:18px;letter-spacing:.3px}
@@ -111,7 +116,6 @@
       <div class="card">
         <div class="site-header">
           <div class="brand">
-            <!-- Logo visible (mismo archivo que el favicon) -->
             <img src="/GREENFIELD-REDONDO.png" alt="Logo">
             <div>
               <div class="title">Catálogo de Productos</div>
@@ -122,7 +126,27 @@
             <span class="pill brand">Catálogo</span>
             <span class="pill" id="tc">TC 0.00</span>
           </div>
+
+          <!-- === FILTROS (siempre primero) === -->
+          <div class="filters" id="filters">
+            <div class="field">
+              <label for="catFilter">Categoría</label>
+              <select id="catFilter">
+                <option value="__ALL__">Todas</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="sortFilter">Ordenar</label>
+              <select id="sortFilter">
+                <option value="price_desc" selected>Precio: mayor → menor</option>
+                <option value="price_asc">Precio: menor → mayor</option>
+                <option value="name_asc">Nombre: A → Z</option>
+              </select>
+            </div>
+          </div>
+          <!-- === FIN FILTROS === -->
         </div>
+
         <div id="sections" class="section"></div>
       </div>
 

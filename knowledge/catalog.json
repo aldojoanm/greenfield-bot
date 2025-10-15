@@ -1,161 +1,640 @@
 [
   {
-    "sku": "KELIK-KS-1-5-25L",
-    "nombre": "Kelik Potasio",
-    "categoria": "Fertilizantes",
+    "nombre": "Raykat Co-Mo",
+    "categoria": "Tratamiento de semillas",
+    "aspecto": "Líquido, negro",
     "composicion": [
-      { "componente": "Potasio (K2O) soluble en agua", "pp": "30 % p/p", "pv": "46.5 % p/v" },
-      { "componente": "Azufre (S) soluble en agua", "pp": "30 % p/p", "pv": "46.5 % p/v" }
+      { "componente": "Aminoácidos libres", "valor": "4,9 % p/v" },
+      { "componente": "Nitrógeno (N) total", "valor": "3,7 % p/v" },
+      { "componente": "Óxido de Potasio (K2O)", "valor": "3,7 % p/v" },
+      { "componente": "Magnesio (MgO)", "valor": "0,6 % p/v" },
+      { "componente": "Boro (B)", "valor": "0,6 % p/v" },
+      { "componente": "Cobalto (Co) quelado con EDTA", "valor": "0,6 % p/v" },
+      { "componente": "Molibdeno (Mo)", "valor": "6,1 % p/v" },
+      { "componente": "Zinc (Zn)", "valor": "0,6 % p/v" }
     ],
-    "aspecto": "Líquido, amarillento",
-    "usos": "Mejora calidad de fruto y apoya el manejo de plagas por efecto desalojante. Sin cloruros. Bajo índice salino, alta compatibilidad en mezclas.",
-    "dosis": {
-      "foliar": "1.0–2.0 L/ha",
-      "fertirriego": "2.0–3.0 L/ha"
-    },
-    "cultivos": ["Frutales", "Hortalizas", "Soya", "Vid", "Caña"],
-    "compatibilidad": "Bajo índice salino; no contiene cloruros. Evitar mezclar con productos fuertemente alcalinos.",
-    "presentaciones": ["1 L", "5 L", "25 L"],
-    "almacenamiento": "Almacenar en lugar fresco y ventilado.",
-    "link_ficha": "https://tinyurl.com/greenfield-kelik",
-    "precio_bs": 0
-  },
-  {
-    "sku": "BALANZER-1-5-6L",
-    "nombre": "Balanzer",
-    "categoria": "Bioestimulantes",
-    "composicion": [
-      { "componente": "Aminoácidos libres", "pp": "12 % p/p" },
-      { "componente": "NPK + microelementos traza", "pp": "—" },
-      { "componente": "Citoquininas", "pp": "50 ppm" },
-      { "componente": "Auxinas", "pp": "25 ppm" }
-    ],
-    "aspecto": "Líquido marrón",
-    "usos": "Estimula crecimiento, ramificación y rendimiento. Formulado para coaplicarse con glifosato.",
-    "beneficios": [
-      "Bioestimulación",
-      "Mayor ramificación",
-      "Más rendimiento",
-      "Menor estrés",
-      "Más vainas"
-    ],
-    "dosis": {
-      "foliar": "0.5–1.0 L/ha",
-      "con_glifosato": "0.25–0.5 L/ha"
-    },
-    "cultivos": ["Soya", "Maíz", "Trigo", "Algodón"],
-    "compatibilidad": "Diseñado para mezclas con glifosato. Realizar prueba de jarra.",
-    "presentaciones": ["1 L", "5 L", "6 L"],
+    "parametros": { "pH": "8–9" },
+    "presentacion": ["5 L"],
+    "usos": "Favorece la emergencia y vigor. Incrementa la nodulación en soya.",
     "almacenamiento": "Lugar fresco y ventilado.",
-    "link_ficha": "https://tinyurl.com/greenfield-balanzer",
-    "precio_bs": 0
+    "posibles_respuestas": ["raykat como", "raykat co mo", "raykat co-mo", "raykat como soya", "raykat cobalto molibdeno", "co mo raykat", "raykat semillas"]
   },
   {
-    "sku": "NEWFIX-1-5-20L",
-    "nombre": "New Fix",
-    "categoria": "Acondicionadores",
+    "nombre": "Razormin",
+    "categoria": "Tratamiento de semillas",
+    "aspecto": "Líquido, marrón",
     "composicion": [
-      { "componente": "Agentes tensioactivos no iónicos", "pp": "15 % p/p" },
-      { "componente": "Regulador de pH", "pp": "20 % p/p" },
-      { "componente": "Antiespumante", "pp": "2 % p/p" }
+      { "componente": "Aminoácidos libres", "valor": "8,7 % p/v" },
+      { "componente": "Nitrógeno (N) total", "valor": "5 % p/v" },
+      { "componente": "Fósforo (P2O5) total", "valor": "5 % p/v" },
+      { "componente": "Potasio (K2O) total", "valor": "3,7 % p/v" },
+      { "componente": "Hierro (Fe)", "valor": "0,5 % p/v" },
+      { "componente": "Manganeso (Mn)", "valor": "0,12 % p/v" },
+      { "componente": "Boro (B)", "valor": "0,12 % p/v" },
+      { "componente": "Zinc (Zn)", "valor": "0,11 % p/v" },
+      { "componente": "Cobre (Cu)", "valor": "0,025 % p/v" },
+      { "componente": "Molibdeno (Mo)", "valor": "0,012 % p/v" }
     ],
-    "aspecto": "Líquido incoloro a ligeramente azulado",
-    "usos": "Optimiza caldos de aplicación: estabiliza pH y controla espuma. Mejora tamaño de gota y reduce deriva.",
-    "beneficios": [
-      "Estabiliza el pH de la mezcla",
-      "Controla la formación de espuma",
-      "Reduce pérdidas por viento (mejor tamaño de gota)",
-      "Aumenta la vida útil de cada gota"
-    ],
-    "dosis": {
-      "coadyuvante": "50–150 mL por 100 L de agua"
-    },
-    "cultivos": ["Todos los cultivos"],
-    "compatibilidad": "Compatible con la mayoría de fitosanitarios y fertilizantes. Añadir primero al tanque.",
-    "presentaciones": ["1 L", "5 L", "20 L"],
-    "almacenamiento": "Almacenar en lugar fresco y ventilado.",
-    "link_ficha": "https://tinyurl.com/greenfield-newfix",
-    "precio_bs": 0
-  },
-  {
-    "sku": "VOXY-5-20L",
-    "nombre": "Voxy",
-    "categoria": "Inductores de Defensa",
-    "composicion": [
-      { "componente": "Cobre (Cu) complejado", "pp": "5 % p/p" },
-      { "componente": "Aditivos sanitizantes", "pp": "—" }
-    ],
-    "aspecto": "Suspensión blanquecina",
-    "usos": "Apoya la resistencia natural de la planta y el manejo sanitario del cultivo.",
-    "beneficios": [
-      "Inductor de resistencia",
-      "Aditivos con acción desinfectante",
-      "Aporte de cobre (Cu) a la nutrición",
-      "Apoyo en programas preventivos"
-    ],
-    "dosis": {
-      "foliar": "1.0–1.5 L/ha"
-    },
-    "cultivos": ["Soya", "Hortalizas", "Frutales"],
-    "compatibilidad": "Evitar mezclar con aceites minerales o productos de reacción fuertemente alcalina.",
-    "presentaciones": ["5 L", "20 L"],
+    "parametros": { "pH": "4–4,5" },
+    "presentacion": ["0,25 L", "0,5 L", "1 L", "5 L", "25 L"],
+    "usos": "Bioestimulante para desarrollo radicular y aéreo y mejor producción.",
     "almacenamiento": "Lugar fresco y ventilado.",
-    "link_ficha": "https://tinyurl.com/greenfield-voxy",
-    "precio_bs": 0
+    "posibles_respuestas": ["razor min", "rasormin", "razormín", "raizormin", "raiz ormin", "raizor min", "trat semilla razormin"]
   },
+
   {
-    "sku": "FITOMARE-1-5-20L",
-    "nombre": "Fitomare",
-    "categoria": "Bioestimulantes",
+    "nombre": "MicroEssentials SZ",
+    "categoria": "Fertilizantes granulados",
+    "aspecto": "Gránulos grises, marrones o negros",
     "composicion": [
-      { "componente": "Extracto de algas marinas (Ascophyllum nodosum)", "pp": "20 % p/p" },
-      { "componente": "Aminoácidos", "pp": "5 % p/p" },
-      { "componente": "Macro y microelementos", "pp": "trazas" }
+      { "componente": "Nitrógeno (N) total", "valor": "12 %" },
+      { "componente": "Fósforo (P2O5)", "valor": "40 %" },
+      { "componente": "Azufre total", "valor": "10 % (5 % SO4, 5 % S elemental)" },
+      { "componente": "Zinc (Zn)", "valor": "1 %" }
     ],
-    "aspecto": "Líquido marrón oscuro",
-    "usos": "Estimula floración, fecundación y cuajado. Favorece el desarrollo radicular y ayuda a superar estrés (fitotoxicidad, sequía y heladas).",
-    "beneficios": [
-      "Bioestimulante con extracto de algas",
-      "Ayuda a contrarrestar situaciones de estrés",
-      "Promotor de citoquininas y función osnoprotectora",
-      "Favorece brotación, floración y cuajado"
-    ],
-    "dosis": {
-      "foliar": "1.0–2.0 L/ha",
-      "fertirriego": "2.0–3.0 L/ha"
-    },
-    "cultivos": ["Soya", "Maíz", "Trigo", "Frutales", "Hortalizas"],
-    "compatibilidad": "Generalmente compatible; realizar prueba de jarra.",
-    "presentaciones": ["1 L", "5 L", "20 L"],
-    "almacenamiento": "Evitar heladas y altas temperaturas. Mantener en lugar fresco y ventilado.",
-    "link_ficha": "https://tinyurl.com/greenfield-fitomare",
-    "precio_bs": 0
+    "presentacion": ["50 Kg", "1000 Kg (Big Bag)"],
+    "usos": "Fertilizante para aplicación directa al suelo.",
+    "almacenamiento": "Lugar fresco y ventilado.",
+    "posibles_respuestas": ["micro essentials", "microessential sz", "mesz", "micro esencial sz", "microesencial", "microessentiales", "micro sz"]
   },
   {
-    "sku": "NITROGREEN-S-50KG",
+    "nombre": "FOSFATO MONOAMÓNICO",
+    "categoria": "Fertilizantes granulados",
+    "aspecto": "Cristalizado",
+    "composicion": [
+      { "componente": "Nitrógeno (N)", "valor": "12 % mínimo" },
+      { "componente": "Fósforo (P2O5)", "valor": "61 % mínimo" }
+    ],
+    "parametros": { "Humedad": "1,5 % máx", "pH": "4,9" },
+    "presentacion": ["25 Kg"],
+    "usos": "Fertirriego; apto para todo tipo de cultivo.",
+    "almacenamiento": "Lugar fresco y ventilado.",
+    "posibles_respuestas": ["fosfato monoamónico", "fosfato monoamonico", "map", "fozfato mono", "mono amonico", "fosfato 12-61-0", "12 61 0"]
+  },
+  {
+    "nombre": "FOSFATO DIAMÓNICO",
+    "categoria": "Fertilizantes granulados",
+    "aspecto": "Granulado marrón/negro",
+    "composicion": [
+      { "componente": "Nitrógeno (N)", "valor": "18 %" },
+      { "componente": "Fósforo (P2O5)", "valor": "46 %" }
+    ],
+    "parametros": { "Humedad": "1,5 % máx" },
+    "presentacion": ["50 Kg"],
+    "usos": "Fertilizante fosfatado apto para cualquier cultivo.",
+    "almacenamiento": "Lugar fresco y ventilado.",
+    "posibles_respuestas": ["fosfato diamonico", "fosfato diamónico", "dap", "fozfato dia", "18 46 0", "fosfato 18-46-0", "diam mono"]
+  },
+  {
     "nombre": "NitroGreen S",
-    "categoria": "Fertilizantes",
+    "categoria": "Fertilizantes granulados",
+    "aspecto": "Granulado",
     "composicion": [
-      { "componente": "Nitrógeno (N)", "pp": "36 % p/p" },
-      { "componente": "Azufre (S)", "pp": "10 % p/p" }
+      { "componente": "Nitrógeno (N) total", "valor": "36 %" },
+      { "componente": "Azufre total (SO3)", "valor": "10 %" }
     ],
-    "aspecto": "Sólido granulado",
-    "usos": "Aplicación al suelo de liberación controlada con granulometría uniforme para mayor tiempo de disponibilidad.",
-    "beneficios": [
-      "Azufre con disponibilidad inmediata",
-      "Aplicaciones al voleo",
-      "Nitrógeno protegido",
-      "Granulometría uniforme",
-      "Máximo tiempo disponible para el cultivo"
+    "presentacion": ["50 Kg"],
+    "usos": "Aplicación al suelo.",
+    "almacenamiento": "Lugar fresco y ventilado.",
+    "posibles_respuestas": ["nitro green s", "nitrogreens", "nitro green azufre", "ngr s", "nitrongreen s"]
+  },
+  {
+    "nombre": "NitroGreen",
+    "categoria": "Fertilizantes granulados",
+    "aspecto": "Granulado",
+    "composicion": [
+      { "componente": "Nitrógeno (N) total", "valor": "46 %" }
     ],
-    "dosis": {
-      "suelo": "100–300 kg/ha (ajustar según análisis de suelo)"
-    },
-    "cultivos": ["Soya", "Maíz", "Trigo", "Girasol", "Pasturas"],
-    "compatibilidad": "Mezclable con la mayoría de fertilizantes granulados.",
-    "presentaciones": ["50 Kg"],
-    "almacenamiento": "Mantener en lugar seco y ventilado; evitar humedad.",
-    "link_ficha": "https://tinyurl.com/greenfield-nitrogreen",
-    "precio_bs": 0
+    "presentacion": ["50 Kg"],
+    "usos": "Aplicación al suelo.",
+    "almacenamiento": "Lugar fresco y ventilado.",
+    "posibles_respuestas": ["nitro green", "nitrogren", "nitrogreen 46", "ngr", "nitro gren"]
+  },
+  {
+    "nombre": "Urea",
+    "categoria": "Fertilizantes granulados",
+    "aspecto": "Fertilizante granulado blanco",
+    "composicion": [
+      { "componente": "Nitrógeno (N) total", "valor": "46 %" }
+    ],
+    "parametros": { "Biuret": "< 1 %", "Humedad": "≤ 0,5 %" },
+    "presentacion": ["50 Kg"],
+    "usos": "Aplicación al suelo en cualquier cultivo.",
+    "almacenamiento": "Fresco, seco, cubierto y ventilado.",
+    "posibles_respuestas": ["urea 46", "ureah", "ureia", "urea granulada", "urea fertilizante", "uria"]
+  },
+  {
+    "nombre": "GreenMix",
+    "categoria": "Fertilizantes granulados",
+    "aspecto": "Mezcla física (granulado)",
+    "composicion": [
+      { "componente": "Nitrógeno (N) total", "valor": "20 % (±1)" },
+      { "componente": "Fósforo (P2O5)", "valor": "20 % (±1)" },
+      { "componente": "Potasio (K2O)", "valor": "20 % (±1)" },
+      { "componente": "Citoquinina y Auxina", "valor": "—" }
+    ],
+    "presentacion": ["50 Kg"],
+    "usos": "Fertilizante compuesto por mezcla física para aplicación al suelo.",
+    "almacenamiento": "Lugar fresco y ventilado.",
+    "posibles_respuestas": ["green mix", "greenmix 20 20 20", "greenmix voleo", "grinmix", "greenmix granulado"]
+  },
+  {
+    "nombre": "GreenMix CAÑA",
+    "categoria": "Fertilizantes granulados",
+    "aspecto": "Mezcla física (granulado)",
+    "composicion": [
+      { "componente": "Nitrógeno (N) total", "valor": "26 % (±1)" },
+      { "componente": "Fósforo (P2O5)", "valor": "4 % (±1)" },
+      { "componente": "Potasio (K2O)", "valor": "12 % (±1)" },
+      { "componente": "Azufre (S)", "valor": "8 % (±1)" },
+      { "componente": "Zinc (Zn)", "valor": "0,5 % (±1)" }
+    ],
+    "presentacion": ["50 Kg"],
+    "usos": "Mezcla física para aplicación al suelo; adecuada para caña.",
+    "almacenamiento": "Lugar fresco y ventilado.",
+    "posibles_respuestas": ["greenmix cana", "green mix caña", "greenmix cane", "greenmix 26-4-12", "greenmix zafra"]
+  },
+  {
+    "nombre": "Sulfato de Amonio",
+    "categoria": "Fertilizantes granulados",
+    "aspecto": "Gránulos incoloros a pardos (1,9–3,3 mm)",
+    "composicion": [
+      { "componente": "Nitrógeno (N) total", "valor": "21 %" },
+      { "componente": "Azufre disponible (SO4)", "valor": "24 %" }
+    ],
+    "solubilidad": "74,6 kg/100 L (20°C)",
+    "presentacion": ["50 Kg"],
+    "usos": "Aplicación directa al suelo; posible fertirriego previa prueba.",
+    "almacenamiento": "Lugar fresco y ventilado.",
+    "posibles_respuestas": ["sulfato amonio", "sulf amonio", "sa 21 24", "sulfato de amonio granulado", "sulfato amonio 21"]
+  },
+  {
+    "nombre": "Cloruro de Potasio",
+    "categoria": "Fertilizantes granulados",
+    "aspecto": "Granulado",
+    "composicion": [
+      { "componente": "Potasio (K2O)", "valor": "60 %" }
+    ],
+    "parametros": { "Humedad": "0,5 %" },
+    "presentacion": ["50 Kg"],
+    "usos": "Uso agrícola para cualquier cultivo.",
+    "almacenamiento": "Fresco, seco, cubierto y ventilado.",
+    "posibles_respuestas": ["cloruro potasio", "kcl", "muriato de potasio", "cloruro de potacio", "cloruro potacio", "k 60"]
+  },
+
+  {
+    "nombre": "Kelik Potasio",
+    "categoria": "Fertilizantes (NPK) líquidos y sólidos",
+    "aspecto": "Líquido, incoloro",
+    "composicion": [
+      { "componente": "Óxido de Potasio (K2O)", "valor": "50 % p/v (33,3 % p/p)" },
+      { "componente": "Quelatante (EDTA)", "valor": "4,5 % p/v" }
+    ],
+    "parametros": { "pH": "11" },
+    "presentacion": ["1 L", "5 L", "25 L"],
+    "usos": "Aporte de K sin N, sulfato ni cloruro; foliar o riego.",
+    "almacenamiento": "Lugar fresco y ventilado.",
+    "posibles_respuestas": ["kelik k", "kelik potacio", "kelik potassium", "kelik k2o 50", "kelik liquido potasio", "kelik k 50"]
+  },
+  {
+    "nombre": "VollKorn",
+    "categoria": "Fertilizantes (NPK) líquidos y sólidos",
+    "aspecto": "Líquido, incoloro",
+    "composicion": [
+      { "componente": "Nitrógeno (N) soluble", "valor": "1,50 %" },
+      { "componente": "Potasio (K2O) soluble", "valor": "45,00 %" }
+    ],
+    "presentacion": ["1 L", "5 L", "10 L", "20 L", "1000 L"],
+    "origen": "Brasil",
+    "usos": "Aporte de K; aplicación foliar o en riego.",
+    "almacenamiento": "Lugar fresco y ventilado.",
+    "posibles_respuestas": ["volkorn", "volcorn", "vol korn", "vollkorn k45", "vollkorn potasio", "vollkorn brasil"]
+  },
+  {
+    "nombre": "Solucat 10-52-10 + Micro",
+    "categoria": "Fertilizantes (NPK) líquidos y sólidos",
+    "aspecto": "Sólido cristalino, color amarillo",
+    "composicion": [
+      { "componente": "Nitrógeno (N) amoniacal", "valor": "10 %" },
+      { "componente": "Pentóxido de Fósforo (P2O5) soluble", "valor": "52 %" },
+      { "componente": "Óxido de Potasio (K2O) soluble", "valor": "10 %" },
+      { "componente": "Hierro (Fe) quelatado", "valor": "0,020 %" },
+      { "componente": "Manganeso (Mn) quelatado", "valor": "0,010 %" },
+      { "componente": "Zinc (Zn) quelatado", "valor": "0,002 %" },
+      { "componente": "Cobre (Cu) quelatado", "valor": "0,002 %" },
+      { "componente": "Boro (B) soluble", "valor": "0,010 %" }
+    ],
+    "quelatante": "EDTA",
+    "presentacion": ["1 L", "5 L", "25 L"],
+    "usos": "Abono soluble NPK con microelementos quelatados.",
+    "almacenamiento": "Lugar fresco y ventilado.",
+    "posibles_respuestas": ["solucat 10 52 10", "solucate 10-52-10", "10-52-10 micro", "solucat fosforo alto", "solucat 10-52-10+micro"]
+  },
+  {
+    "nombre": "Solucat 25-5-5 + Micro",
+    "categoria": "Fertilizantes (NPK) líquidos y sólidos",
+    "aspecto": "Sólido cristalino, color morado",
+    "composicion": [
+      { "componente": "Nitrógeno (N) total", "valor": "25 % (12 % ureico, 13 % amoniacal)" },
+      { "componente": "Pentóxido de Fósforo (P2O5) soluble", "valor": "5 %" },
+      { "componente": "P2O5 soluble en citrato amónico neutro y agua", "valor": "5 %" },
+      { "componente": "Óxido de Potasio (K2O) soluble", "valor": "5 %" },
+      { "componente": "Fe quelatado", "valor": "0,020 %" },
+      { "componente": "Mn quelatado", "valor": "0,010 %" },
+      { "componente": "Zn quelatado", "valor": "0,002 %" },
+      { "componente": "Cu quelatado", "valor": "0,002 %" },
+      { "componente": "Boro (B)", "valor": "0,010 %" }
+    ],
+    "quelatante": "EDTA",
+    "presentacion": ["1 L", "5 L", "25 L"],
+    "usos": "Abono soluble NPK con microelementos.",
+    "almacenamiento": "Lugar fresco y ventilado.",
+    "posibles_respuestas": ["solucat 25 5 5", "solucat 25-5-5 micro", "solucate 25-5-5", "25-5-5"]
+  },
+  {
+    "nombre": "Solucat 10-10-40 + Micro",
+    "categoria": "Fertilizantes (NPK) líquidos y sólidos",
+    "aspecto": "Sólido cristalino, color amarillo",
+    "composicion": [
+      { "componente": "Nitrógeno (N) total", "valor": "10 % (4 % nítrico, 4 % ureico, 2 % amoniacal)" },
+      { "componente": "Pentóxido de Fósforo (P2O5) soluble", "valor": "10 %" },
+      { "componente": "Óxido de Potasio (K2O) soluble", "valor": "40 %" },
+      { "componente": "Fe quelatado", "valor": "0,020 %" },
+      { "componente": "Mn quelatado", "valor": "0,010 %" },
+      { "componente": "Zn quelatado", "valor": "0,002 %" },
+      { "componente": "Cu quelatado", "valor": "0,002 %" },
+      { "componente": "Boro (B)", "valor": "0,010 %" }
+    ],
+    "quelatante": "EDTA",
+    "presentacion": ["1 L", "5 L", "25 L"],
+    "usos": "Abono soluble NPK con microelementos.",
+    "almacenamiento": "Lugar fresco y ventilado.",
+    "posibles_respuestas": ["solucat 10 10 40", "solucat potasio alto", "10-10-40 micro", "solucate 10-10-40"]
+  },
+  {
+    "nombre": "Solucat 20-20-20 + Micro",
+    "categoria": "Fertilizantes (NPK) líquidos y sólidos",
+    "aspecto": "Sólido cristalino, color morado",
+    "composicion": [
+      { "componente": "Nitrógeno (N) total", "valor": "20 % (2 % nítrico, 14 % ureico, 4 % amoniacal)" },
+      { "componente": "Pentóxido de Fósforo (P2O5) soluble", "valor": "20 %" },
+      { "componente": "Óxido de Potasio (K2O) soluble", "valor": "20 %" },
+      { "componente": "Fe quelatado", "valor": "0,020 %" },
+      { "componente": "Mn quelatado", "valor": "0,010 %" },
+      { "componente": "Zn quelatado", "valor": "0,002 %" },
+      { "componente": "Cu quelatado", "valor": "0,002 %" },
+      { "componente": "Boro (B)", "valor": "0,010 %" }
+    ],
+    "quelatante": "EDTA",
+    "presentacion": ["1 L", "5 L", "25 L"],
+    "usos": "Abono soluble NPK con microelementos.",
+    "almacenamiento": "Lugar fresco y ventilado.",
+    "posibles_respuestas": ["solucat 20 20 20", "20-20-20 micro", "solucate 20-20-20", "solucat balanceado"]
+  },
+
+  {
+    "nombre": "Kelik Boro",
+    "categoria": "Fertilizantes con Micro y Macronutrientes secundarios",
+    "aspecto": "Líquido, amarillento",
+    "composicion": [
+      { "componente": "Boro (B) soluble", "valor": "15 % p/v (11 % p/p)" }
+    ],
+    "parametros": { "pH": "7–8" },
+    "presentacion": ["1 L", "5 L", "25 L"],
+    "usos": "Corrector de carencias de Boro (etanolamina). Preventivo y curativo; foliar o riego.",
+    "almacenamiento": "Lugar fresco y ventilado.",
+    "posibles_respuestas": ["kelik b", "kelik boro etanolamina", "kelik b 15", "kelik boron", "kelik boro liquido"]
+  },
+  {
+    "nombre": "Kelik Calcio-Boro",
+    "categoria": "Fertilizantes con Micro y Macronutrientes secundarios",
+    "aspecto": "Líquido, rojizo",
+    "composicion": [
+      { "componente": "Óxido de Calcio (CaO) complejado", "valor": "6 % p/v" },
+      { "componente": "Boro (B) soluble", "valor": "3 % p/v" }
+    ],
+    "parametros": { "pH": "2–8" },
+    "presentacion": ["1 L", "5 L", "25 L"],
+    "usos": "Corrector de Ca y B; preventivo y curativo.",
+    "almacenamiento": "Lugar fresco y ventilado.",
+    "posibles_respuestas": ["kelik calcio boro", "kelik ca b", "kelik cal bor", "kelik ca-bo", "kelik calcio b"]
+  },
+  {
+    "nombre": "Kelik Manganeso",
+    "categoria": "Fertilizantes con Micro y Macronutrientes secundarios",
+    "aspecto": "Líquido, anaranjado",
+    "composicion": [
+      { "componente": "Manganeso (Mn) quelatado por EDTA", "valor": "8,5 % p/v" }
+    ],
+    "parametros": { "pH": "7–8", "Estabilidad_pH": "3–11" },
+    "presentacion": ["1 L", "5 L", "25 L"],
+    "usos": "Corrector de Mn; preventivo y curativo; foliar o riego.",
+    "almacenamiento": "Lugar fresco y ventilado.",
+    "posibles_respuestas": ["kelik mn", "kelik manganeso edta", "kelik mg (error)", "kelik manga", "kelik manganeso 8.5"]
+  },
+  {
+    "nombre": "Folicat B-Mo",
+    "categoria": "Fertilizantes con Micro y Macronutrientes secundarios",
+    "aspecto": "Sólido cristalino, verde",
+    "composicion": [
+      { "componente": "Pentóxido de Fósforo (P2O5) soluble en agua", "valor": "12 %" },
+      { "componente": "P2O5 soluble en citrato amónico neutro y agua", "valor": "16 %" },
+      { "componente": "Óxido de Potasio (K2O)", "valor": "16 %" },
+      { "componente": "Boro (B)", "valor": "8 %" },
+      { "componente": "Molibdeno (Mo)", "valor": "10 %" }
+    ],
+    "presentacion": ["1 Kg"],
+    "usos": "Abono foliar PK enriquecido con B y Mo para floración y cuaje.",
+    "almacenamiento": "Lugar fresco y ventilado.",
+    "posibles_respuestas": ["folicat b mo", "folicat bmo", "folicat b-mo", "folicat boro molibdeno", "folicat floracion"]
+  },
+  {
+    "nombre": "Kelkat Hierro",
+    "categoria": "Fertilizantes con Micro y Macronutrientes secundarios",
+    "aspecto": "Microgránulo, rojizo",
+    "composicion": [
+      { "componente": "Hierro (Fe) quelatado EDDHA", "valor": "6 %" }
+    ],
+    "parametros": { "pH": "2–11" },
+    "presentacion": ["1 Kg", "5 Kg", "20 Kg"],
+    "usos": "Corrector de Fe EDDHA; aplicación vía suelo (riego).",
+    "almacenamiento": "Lugar fresco y ventilado.",
+    "posibles_respuestas": ["kelkat hierro eddha", "kelkat fe", "kelkat fierro", "kelkat hierro 6", "kelkat suelo"]
+  },
+  {
+    "nombre": "Calage",
+    "categoria": "Fertilizantes con Micro y Macronutrientes secundarios",
+    "aspecto": "Líquido, blanco",
+    "composicion": [
+      { "componente": "Calcio (Ca)", "valor": "42,50 % p/v" },
+      { "componente": "Nitrógeno (N)", "valor": "1,70 % p/v" }
+    ],
+    "parametros": { "Densidad": "1,70 g/mL" },
+    "presentacion": ["10 L"],
+    "usos": "Solución con nanotecnología; provee Ca (y mejora absorción).",
+    "almacenamiento": "Fresco, seco, cubierto y ventilado.",
+    "posibles_respuestas": ["cal age", "calage calcio", "calage ca", "calage liquido", "calage nano"]
+  },
+  {
+    "nombre": "Calage Plus",
+    "categoria": "Fertilizantes con Micro y Macronutrientes secundarios",
+    "aspecto": "Líquido, beige",
+    "composicion": [
+      { "componente": "Calcio (Ca)", "valor": "25,57 % p/v" },
+      { "componente": "Magnesio (Mg)", "valor": "9,30 % p/v" }
+    ],
+    "parametros": { "Densidad": "1,55 g/mL" },
+    "presentacion": ["10 L"],
+    "usos": "Solución con nanotecnología; aporta Ca y Mg.",
+    "almacenamiento": "Fresco, seco, cubierto y ventilado.",
+    "posibles_respuestas": ["calage plus", "calage+","calage magnesio", "calage ca mg", "calage pluss"]
+  },
+
+  {
+    "nombre": "Balanzer",
+    "categoria": "Bioestimulantes y nutrición",
+    "aspecto": "Líquido, azul verdoso",
+    "composicion": [
+      { "componente": "Aminoácidos libres", "valor": "2 % p/v" },
+      { "componente": "Óxido de Magnesio (MgO) soluble", "valor": "0,5 % p/v" },
+      { "componente": "Boro (B) soluble", "valor": "0,3 % p/v" },
+      { "componente": "Cobalto (Co) quelado con EDTA", "valor": "0,1 % p/v" },
+      { "componente": "Cobre (Cu) quelado con EDTA", "valor": "0,3 % p/v" },
+      { "componente": "Molibdeno (Mo) soluble", "valor": "1,2 % p/v" },
+      { "componente": "Manganeso (Mn) complejado", "valor": "6 % p/v" },
+      { "componente": "Zinc (Zn) complejado", "valor": "2,5 % p/v" }
+    ],
+    "parametros": { "pH": "2,5–3,5" },
+    "presentacion": ["5 L", "20 L"],
+    "usos": "Bioestimulante antiestresante; mejora ramificación y rendimiento (soya).",
+    "almacenamiento": "Lugar fresco y ventilado.",
+    "posibles_respuestas": ["balancer", "balanzed", "balanzer soya", "balanzer bioestimulante", "balanzer ramificacion"]
+  },
+  {
+    "nombre": "Fitomare",
+    "categoria": "Bioestimulantes y nutrición",
+    "aspecto": "Líquido, negro",
+    "composicion": [
+      { "componente": "Extracto de algas (Ascophyllum nodosum)", "valor": "17,7 % p/v" },
+      { "componente": "Materia orgánica", "valor": "9,44 % p/v" },
+      { "componente": "Aminoácidos libres", "valor": "2,36 % p/v" },
+      { "componente": "Nitrógeno (N) total", "valor": "6,49 % p/v" },
+      { "componente": "Fósforo (P2O5) total", "valor": "3,54 % p/v" },
+      { "componente": "Potasio (K2O) total", "valor": "4,13 % p/v" },
+      { "componente": "Boro (B)", "valor": "0,413 % p/v" },
+      { "componente": "Molibdeno (Mo)", "valor": "0,236 % p/v" },
+      { "componente": "Citoquininas", "valor": "120 ppm" }
+    ],
+    "presentacion": ["1 Kg", "5 Kg", "20 Kg"],
+    "usos": "Bioestimulante con extracto de algas; favorece floración, cuaje y raíces; ayuda ante estrés.",
+    "almacenamiento": "Lugar fresco y ventilado.",
+    "posibles_respuestas": ["fito mare", "fitomar", "fitomare algas", "fitomare ascophyllum", "fitomare bioestimulante"]
+  },
+  {
+    "nombre": "Aminocat Xtend",
+    "categoria": "Bioestimulantes y nutrición",
+    "aspecto": "Líquido, marrón",
+    "composicion": [
+      { "componente": "Aminoácidos libres", "valor": "11,8 % p/v" },
+      { "componente": "Nitrógeno (N) total", "valor": "5,9 % p/v" },
+      { "componente": "Pentóxido de Fósforo (P2O5) soluble", "valor": "5,9 % p/v" },
+      { "componente": "Óxido de Potasio (K2O) soluble", "valor": "3,54 % p/v" },
+      { "componente": "Ácido giberélico", "valor": "0,24 % p/v" }
+    ],
+    "parametros": { "pH": "5–5,5" },
+    "presentacion": ["1 L", "5 L", "25 L"],
+    "usos": "Bioestimulante (floración/cuajado y antiestrés); rápida absorción.",
+    "almacenamiento": "Lugar fresco y ventilado.",
+    "posibles_respuestas": ["aminocat extend", "amino cat xtend", "aminocat x tend", "aminocat floracion", "aminocat cuajado"]
+  },
+  {
+    "nombre": "Microcat Mix",
+    "categoria": "Bioestimulantes y nutrición",
+    "aspecto": "Líquido, marrón",
+    "composicion": [
+      { "componente": "Aminoácidos + Ácidos orgánicos", "valor": "12,5 % p/v" },
+      { "componente": "Nitrógeno (N) total", "valor": "3,8 % p/v" },
+      { "componente": "Hierro (Fe) soluble", "valor": "4,1 % p/v" },
+      { "componente": "Óxido de Magnesio (MgO)", "valor": "2,5 % p/v" },
+      { "componente": "Boro (B) soluble", "valor": "0,25 % p/v" },
+      { "componente": "Zinc (Zn) soluble", "valor": "1,5 % p/v" },
+      { "componente": "Manganeso (Mn) soluble", "valor": "1 % p/v" }
+    ],
+    "parametros": { "pH": "2,5–3" },
+    "presentacion": ["1 L", "5 L", "25 L"],
+    "usos": "Corrector múltiple de micronutrientes complejados; recomendado vía foliar.",
+    "almacenamiento": "Lugar fresco y ventilado.",
+    "posibles_respuestas": ["micro cat mix", "microcatmix", "microcat mezcla", "microcat multi", "microcat micronutrientes"]
+  },
+  {
+    "nombre": "Microcat Zinc - Manganeso",
+    "categoria": "Bioestimulantes y nutrición",
+    "aspecto": "Líquido, marrón",
+    "composicion": [
+      { "componente": "Zinc (Zn)", "valor": "11,7 % p/v" },
+      { "componente": "Manganeso (Mn)", "valor": "7,3 % p/v" },
+      { "componente": "Nitrógeno (N)", "valor": "8,8 % p/v" },
+      { "componente": "Aminoácidos + ácidos orgánicos", "valor": "22 % p/v" }
+    ],
+    "parametros": { "pH": "3–4" },
+    "presentacion": ["0,5 L", "1 L", "5 L", "25 L"],
+    "dosis": "0,5–1 L/ha (soya de V2 a V8)",
+    "almacenamiento": "Lugar fresco y ventilado.",
+    "posibles_respuestas": ["microcat zinc manganeso", "microcat zn mn", "microcat zinc-mn", "microcat zincmanganeso", "microcat znmn"]
+  },
+  {
+    "nombre": "Microcat Zinc",
+    "categoria": "Bioestimulantes y nutrición",
+    "aspecto": "Líquido, marrón",
+    "composicion": [
+      { "componente": "Zinc (Zn)", "valor": "10 % p/v" },
+      { "componente": "Nitrógeno (N)", "valor": "5,5 % p/v" },
+      { "componente": "Aminoácidos + ácidos orgánicos", "valor": "12 % p/v" }
+    ],
+    "parametros": { "pH": "3–4" },
+    "presentacion": ["0,5 L", "1 L", "5 L", "25 L"],
+    "usos": "Corrector de carencias de Zinc (aminoácidos/ácidos orgánicos). Vía foliar.",
+    "almacenamiento": "Lugar fresco y ventilado.",
+    "posibles_respuestas": ["microcat zinc", "microcat zn", "microcat zinc 10", "micro cat zink", "microcat zinc foliar"]
+  },
+
+  {
+    "nombre": "Voxy",
+    "categoria": "Multisitio e Inductores de defensa",
+    "aspecto": "Líquido, azul",
+    "composicion": [
+      { "componente": "Cobre (Cu) expresado", "valor": "5,85 % p/v" },
+      { "componente": "Fósforo, Azufre, Amonio cuaternario, Biguanida", "valor": "—" }
+    ],
+    "presentacion": ["1 L", "5 L", "10 L", "20 L", "1000 L"],
+    "usos": "Acción multisitio; excelente acompañante de fungicidas de sitio específico.",
+    "almacenamiento": "Lugar fresco y ventilado.",
+    "posibles_respuestas": ["voxi", "voxy cu", "voxy inductor", "voxy multisitio", "voxy cobre"]
+  },
+
+  {
+    "nombre": "N TOP",
+    "categoria": "Tecnología de Aplicación",
+    "aspecto": "Líquido, negro",
+    "composicion": [
+      { "componente": "Nitrógeno (N) total", "valor": "36,40 %" }
+    ],
+    "presentacion": ["1 L", "5 L", "25 L"],
+    "usos": "Aporta N en diferentes fuentes y mejora absorción de nutrientes.",
+    "almacenamiento": "Lugar fresco y ventilado.",
+    "posibles_respuestas": ["n-top", "ntop", "n top nitrogeno", "n top liquido", "n top aplicacion"]
+  },
+  {
+    "nombre": "Exitus",
+    "categoria": "Tecnología de Aplicación",
+    "aspecto": "Líquido, amarillento",
+    "composicion": [
+      { "componente": "Potasio (K2O) soluble", "valor": "30 % p/p (46,5 % p/v)" },
+      { "componente": "Azufre (S) soluble", "valor": "30 % p/p (46,5 % p/v)" }
+    ],
+    "presentacion": ["1 L", "5 L", "25 L"],
+    "usos": "Alta eficacia para control/desalojo de plagas; sin cloruros; bajo índice salino.",
+    "almacenamiento": "Lugar fresco y ventilado.",
+    "posibles_respuestas": ["exittus", "exus", "exitus potasio", "exitus desalojo", "exitus k s"]
+  },
+  {
+    "nombre": "Kit Spray Link - Tractor",
+    "categoria": "Tecnología de Aplicación",
+    "aspecto": "Solución",
+    "composicion": [
+      { "componente": "Nitrógeno (N)", "valor": "1 % p/p (11 g/L p/v)" },
+      { "componente": "Boro (B)", "valor": "0,1 % p/p (1,2 g/L p/v)" }
+    ],
+    "presentacion": ["1 L"],
+    "usos": "Fertilizante mineral mixto foliar con N y B.",
+    "almacenamiento": "Lugar fresco y ventilado.",
+    "posibles_respuestas": ["spraylink tractor", "spray link tractor", "kit spray tractor", "spraylink n b", "spray link nb"]
+  },
+  {
+    "nombre": "Kit Spray Link - Skudo",
+    "categoria": "Tecnología de Aplicación",
+    "aspecto": "Solución",
+    "composicion": [
+      { "componente": "Nitrógeno (N)", "valor": "1 % p/p (11 g/L p/v)" }
+    ],
+    "presentacion": ["1 L"],
+    "usos": "Fertilizante mineral mixto foliar con N; surfactante no iónico.",
+    "almacenamiento": "Lugar fresco y ventilado.",
+    "posibles_respuestas": ["spraylink skudo", "spray link skudo", "kit spray skudo", "skudo spraylink"]
+  },
+  {
+    "nombre": "New Fix",
+    "categoria": "Tecnología de Aplicación",
+    "aspecto": "Solución",
+    "composicion": [
+      { "componente": "Nitrógeno (N)", "valor": "5 % p/p (57,50 g/L p/v)" },
+      { "componente": "Fósforo (P2O5)", "valor": "15 % p/p (172,50 g/L p/v)" }
+    ],
+    "presentacion": ["1 L"],
+    "usos": "Silicona antiespumante aniónica; emulsionante 2% y suspensor.",
+    "almacenamiento": "Lugar fresco y ventilado.",
+    "posibles_respuestas": ["newfix", "neu fix", "new fix coadyuvante", "new fix antiespuma", "new fix ph"]
+  },
+  {
+    "nombre": "Langer iPro",
+    "categoria": "Tecnología de Aplicación",
+    "nota": "No se encontró ficha específica en el PDF proporcionado. Si tienes otra fuente o página exacta, la incorporo de inmediato.",
+    "posibles_respuestas": ["langer ipro", "langer pro", "langeripro", "langger ipro", "langer i pro"]
+  },
+  {
+    "nombre": "Limp Tank",
+    "categoria": "Tecnología de Aplicación",
+    "aspecto": "Solución",
+    "composicion": [
+      { "componente": "Nitrógeno (N)", "valor": "1,00 % p/p (10,20 g/L p/v)" }
+    ],
+    "presentacion": ["0,5 L", "1 L", "5 L", "25 L"],
+    "usos": "Solución con polímero vegetal para limpieza/uso en tanque.",
+    "almacenamiento": "Lugar fresco y ventilado.",
+    "posibles_respuestas": ["limptank", "limp tank limpiador", "limp tanq", "limp tanque", "limp tank polimero"]
+  },
+
+  {
+    "nombre": "Biocat 15",
+    "categoria": "Enmiendas húmicas",
+    "aspecto": "Líquido, negro",
+    "composicion": [
+      { "componente": "Extracto húmico total", "valor": "16,5 % p/v (7,7 % ácidos húmicos; 8,8 % ácidos fúlvicos)" },
+      { "componente": "Óxido de Potasio (K2O)", "valor": "4,4 % p/v" },
+      { "componente": "Materia orgánica", "valor": "73,7 % p/v" }
+    ],
+    "parametros": { "pH": ">12" },
+    "presentacion": ["1 L", "5 L", "25 L"],
+    "usos": "Enmienda húmica líquida de origen vegetal; mejora suelo. Utilizable en agricultura ecológica (Reg. CE 834/2007).",
+    "almacenamiento": "Lugar fresco y ventilado.",
+    "posibles_respuestas": ["biocat15", "bio cat 15", "biocat humico", "biocat fulvico", "biocat liquido"]
+  },
+  {
+    "nombre": "Biocat-G",
+    "categoria": "Enmiendas húmicas",
+    "aspecto": "Granulado, negro",
+    "composicion": [
+      { "componente": "Materia orgánica total", "valor": "75,0 %" },
+      { "componente": "Nitrógeno (N) total", "valor": "10,0 % (5,0 % amoniacal; 5,0 % orgánico)" },
+      { "componente": "Óxido de Potasio (K2O)", "valor": "5,0 %" },
+      { "componente": "Trióxido de Azufre (SO3)", "valor": "8,5 %" },
+      { "componente": "Extracto húmico total", "valor": "29 % (8,5 % húmicos; 20,5 % fúlvicos)" }
+    ],
+    "presentacion": ["25 Kg"],
+    "usos": "Abono organomineral NK sólido de granulometría homogénea.",
+    "almacenamiento": "Fresco, seco, cubierto y ventilado.",
+    "posibles_respuestas": ["biocat g", "bio cat g", "biocat granulado", "biocatg", "biocat organomineral"]
+  },
+  {
+    "nombre": "Humicop",
+    "categoria": "Enmiendas húmicas",
+    "aspecto": "Líquido",
+    "composicion": [
+      { "componente": "Extracto húmico total", "valor": "16,8 % p/v (12,32 % húmicos; 4,48 % fúlvicos)" }
+    ],
+    "presentacion": ["5 L", "25 L"],
+    "usos": "Enmienda húmica líquida de origen mineral (leonardita); mejora estructura y química del suelo.",
+    "almacenamiento": "Fresco, seco, cubierto y ventilado.",
+    "posibles_respuestas": ["humicop humico", "jumicop", "humicop leonardita", "humicop liquido", "humicop enmienda"]
   }
 ]

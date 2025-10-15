@@ -1,3 +1,4 @@
+// /catalog.js
 (function(){
   const MIN_ORDER_USD = 3000;
 
@@ -14,6 +15,10 @@
   const totalsEl = $('#totals');
   const sendEl   = $('#send');
   const tcEl     = $('#tc');
+
+  // Filtros
+  const catSel   = $('#catFilter');
+  const sortSel  = $('#sortFilter');
 
   // móvil
   const fab       = $('#cartFab');
@@ -37,10 +42,9 @@
   let ALL  = [];
   let RATE = 6.96;
   let CART = [];
+  let FILTERS = { category: '__ALL__', sort: 'price_desc' };
 
   // ==== IMÁGENES ====
-  // Intentamos encontrar /image/<NombreSinEspacios>.jpeg (sensible a mayúsculas).
-  // Si no existe, onerror cae en /image/placeholder.png
   function guessImagePath(name){
     const key = String(name||'').replace(/\s+/g,'');
     return `/image/${key}.jpeg`;
@@ -59,14 +63,54 @@
     return m ? Number(m[1]) : 1;
   };
 
+  // === helpers de filtros/orden ===
+  const itemMaxUsd = (it) => {
+    const vs = Array.isArray(it.variantes) ? it.variantes : [];
+    if(!vs.length) return 0;
+    return Math.max(...vs.map(v=>{
+      const usd = num(v.precio_usd);
+      const bs  = num(v.precio_bs);
+      if (usd>0) return usd;
+      if (bs>0)  return bs / (RATE||1);
+      return 0;
+    }));
+  };
+
+  function uniqueCategories(list){
+    const set = new Set(list.map(x => String(x.categoria||'').trim() || 'SIN CATEGORÍA'));
+    return Array.from(set).sort((a,b)=> a.localeCompare(b,'es'));
+  }
+
+  function applyFilters(list){
+    let rows = list.slice();
+
+    // categoría
+    if (FILTERS.category && FILTERS.category !== '__ALL__'){
+      rows = rows.filter(x => String(x.categoria||'').trim() === FILTERS.category);
+    }
+
+    // orden
+    if (FILTERS.sort === 'price_desc'){
+      rows.sort((a,b)=> itemMaxUsd(b) - itemMaxUsd(a));
+    } else if (FILTERS.sort === 'price_asc'){
+      rows.sort((a,b)=> itemMaxUsd(a) - itemMaxUsd(b));
+    } else {
+      rows.sort((a,b)=> a.nombre.localeCompare(b.nombre,'es'));
+    }
+
+    return rows;
+  }
+
   /* ===================== UI: secciones ===================== */
   function renderSections(){
+    const filtered = applyFilters(ALL);
+
+    // agrupado por categoría (si hay filtro de categoría, sólo muestra esa)
     const cats = {};
-    for (const it of ALL){
+    for (const it of filtered){
       const k = String(it.categoria||'').trim() || 'SIN CATEGORÍA';
       (cats[k] ||= []).push(it);
     }
-    Object.values(cats).forEach(arr => arr.sort((a,b)=>a.nombre.localeCompare(b.nombre,'es')));
 
     secEl.innerHTML = Object.entries(cats).map(([cat, items])=>`
       <div class="section-block">
@@ -74,7 +118,7 @@
         <div class="list">
           ${items.map(renderCard).join('')}
         </div>
-      </div>`).join('');
+      </div>`).join('') || `<div class="empty">No hay productos para los filtros seleccionados.</div>`;
 
     bindCards();
   }
@@ -281,25 +325,24 @@
     totalsEl.innerHTML = `Total: US$ ${fmt2(t.usd)} · Bs ${fmt2(t.bs)}<br><span class="muted">TC ${fmt2(RATE)}</span>`;
   }
 
-function buildWaText() {
-  const lines = CART.map(it => {
-    const cant   = fmt2(it.cantidad);
-    const unidad = it.unidad ? ` ${it.unidad}` : '';
-    const pres   = it.presentacion ? ` (${it.presentacion})` : '';
-    const subUsd = (it.precio_usd != null ? Number(it.precio_usd) * Number(it.cantidad || 0) : 0);
-    const subBs  = (it.precio_bs  != null ? Number(it.precio_bs)  * Number(it.cantidad || 0) : 0);
-    return `* ${it.nombre}${pres} — ${cant}${unidad} — SUBTOTAL: US$ ${fmt2(subUsd)} · Bs ${fmt2(subBs)}`;
-  });
+  function buildWaText() {
+    const lines = CART.map(it => {
+      const cant   = fmt2(it.cantidad);
+      const unidad = it.unidad ? ` ${it.unidad}` : '';
+      const pres   = it.presentacion ? ` (${it.presentacion})` : '';
+      const subUsd = (it.precio_usd != null ? Number(it.precio_usd) * Number(it.cantidad || 0) : 0);
+      const subBs  = (it.precio_bs  != null ? Number(it.precio_bs)  * Number(it.cantidad || 0) : 0);
+      return `* ${it.nombre}${pres} — ${cant}${unidad} — SUBTOTAL: US$ ${fmt2(subUsd)} · Bs ${fmt2(subBs)}`;
+    });
 
-  const t = totals();
-  return [
-    'CART_V1 GREENFIELD',   // <<--- clave: el backend busca este header
-    ...lines,
-    `TOTAL USD: ${fmt2(t.usd)}`,
-    `TOTAL BS: ${fmt2(t.bs)}`
-  ].join('\n');
-}
-
+    const t = totals();
+    return [
+      'PEDIDO GREENFIELD',
+      ...lines,
+      `TOTAL USD: ${fmt2(t.usd)}`,
+      `TOTAL BS: ${fmt2(t.bs)}`
+    ].join('\n');
+  }
 
   function trySend(){
     const t = totals();
@@ -311,17 +354,31 @@ function buildWaText() {
   sendEl.addEventListener('click', trySend);
   sendM.addEventListener('click', trySend);
 
+  // === eventos filtros ===
+  function bindFilters(){
+    catSel.addEventListener('change', ()=>{
+      FILTERS.category = catSel.value || '__ALL__';
+      renderSections();
+    });
+    sortSel.addEventListener('change', ()=>{
+      FILTERS.sort = sortSel.value || 'price_desc';
+      renderSections();
+    });
+  }
+
+  function fillCategoryOptions(cats){
+    const current = catSel.value;
+    catSel.innerHTML = `<option value="__ALL__">Todas</option>` + 
+      cats.map(c => `<option value="${esc(c)}"${c===current?' selected':''}>${esc(c)}</option>`).join('');
+  }
+
   /* ===================== Init ===================== */
   (async function init(){
     try{
-      // cache-buster para forzar a leer lo último del Excel/JSON
       const r = await fetch(`${JSON_URL}?t=${Date.now()}`, { cache: 'no-store' });
       if(!r.ok) throw new Error('HTTP '+r.status);
       const { items=[], rate=6.96 } = await r.json();
 
-      // Normaliza tus filas tipo Excel (las que pegaste)
-      // Campos esperados de cada fila: TIPO, PRODUCTO, PRESENTACION, UNIDAD, PRECIO (USD), PRECIO (BS)
-      // Si ya vienes con "variantes", esto respeta tu formato.
       ALL = items.map(it=>{
         if (Array.isArray(it.variantes)) return it;
 
@@ -341,6 +398,10 @@ function buildWaText() {
       RATE = Number(rate) || 6.96;
       tcEl.textContent = `TC ${fmt2(RATE)}`;
 
+      // Filtros
+      fillCategoryOptions(uniqueCategories(ALL));
+      bindFilters();
+
       renderSections();
       updateCart();
     }catch(e){
@@ -349,7 +410,7 @@ function buildWaText() {
       cartEl.innerHTML = `<div class="empty">Tu carrito está vacío.</div>`;
       totalsEl.innerHTML = '';
       sendEl.disabled = true;
-      sendM.disabled  = true;
+      sendM.disabled = true; 
     }
   })();
 })();
