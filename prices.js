@@ -21,11 +21,27 @@ const TTL_MS = Number(process.env.PRICES_TTL_MS || 60_000);
    ========================= */
 const norm = (s='') => String(s).normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase().trim();
 const to2  = (n) => Number.isFinite(+n) ? +(+n).toFixed(2) : 0;
-const buildSku = (prod='', pres='') => {
-  prod = String(prod||'').trim();
-  pres = String(pres||'').trim();
-  return pres ? `${prod}-${pres}` : prod;
-};
+
+// Normaliza unidad exactamente a 'L' o 'KG'
+function normUnidad(u=''){
+  const t = String(u).toLowerCase();
+  if (t.startsWith('kg') || t.startsWith('kilo')) return 'KG';
+  if (t.startsWith('l')) return 'L';
+  if (t.startsWith('uni') || t.startsWith('und')) return 'UNID';
+  return String(u || '').toUpperCase();
+}
+
+// Construye SKU **incluyendo la unidad** (clave para que el engine encuentre precio)
+function buildSku(producto='', presentacion='', unidad=''){
+  const prod = String(producto||'').trim();
+  const pres = String(presentacion||'').trim();
+  const uni  = normUnidad(unidad);
+  // si la presentacion ya trae unidad, no la duplicamos
+  const presHasUnit = /\b(\d+(?:[.,]\d+)?)\s*(l|lt|lts|litros?|kg|kgs?|kilos?)\b/i.test(pres);
+  const presFinal = presHasUnit ? pres : (uni && pres ? `${pres} ${uni}` : pres);
+  return presFinal ? `${prod}-${presFinal}` : prod;
+}
+
 const normCat = (c='') => {
   const t = norm(c);
   if (t.startsWith('inse')) return 'insecticida';
@@ -83,8 +99,8 @@ async function _fetchPricesRaw() {
 
   // 2) mapear cabeceras
   const header = values[0].map(h => norm(h));
-  const col = (nameCandidates) => {
-    for (const name of nameCandidates) {
+  const col = (names) => {
+    for (const name of names) {
       const i = header.indexOf(norm(name));
       if (i >= 0) return i;
     }
@@ -115,11 +131,12 @@ async function _fetchPricesRaw() {
 
     const precio_usd = to2(Number(usdRaw));
     const precio_bs  = to2(Number(bsRaw));
+    const uniNorm    = normUnidad(unidad);
 
     items.push({
       categoria: normCat(tipo),
-      sku: buildSku(prod, pres),
-      unidad: String(unidad||'').toUpperCase(),
+      sku: buildSku(prod, pres, uniNorm),      // <<–– ahora incluye la UNIDAD
+      unidad: uniNorm,
       precio_usd,
       precio_bs
     });
@@ -149,14 +166,10 @@ async function _fetchPricesRaw() {
     }
   }
 
-  // Si no hay versión, usa timestamp
   if (!version) version = String(Date.now());
 
-  // Orden por categoría y SKU
-  items.sort((a,b)=>{
-    const ord = { herbicida:0, insecticida:1, fungicida:2 };
-    return (ord[a.categoria]??9) - (ord[b.categoria]??9) || a.sku.localeCompare(b.sku);
-  });
+  // Orden estable
+  items.sort((a,b)=> a.sku.localeCompare(b.sku));
 
   return { prices: items, version, rate: +to2(rate) };
 }

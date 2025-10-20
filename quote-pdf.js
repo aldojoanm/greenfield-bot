@@ -5,8 +5,8 @@ import PDFDocument from 'pdfkit';
 
 const TZ = process.env.TIMEZONE || 'America/La_Paz';
 
-/* ====== Colores ====== */
-const BRAND = { primary: '#264229', dark: '#264229' }; // verde exacto
+/* ====== Colores (verde exacto #264229) ====== */
+const BRAND = { primary: '#264229', dark: '#264229' };
 const GRID  = '#6C7A73';
 const TINTS = { headerBG:'#E9F4EE', rowBG:'#F6FBF8', totalBG:'#DDF0E6' };
 
@@ -21,8 +21,8 @@ function fmtLongDate(date=new Date(), tz=TZ){
     return new Intl.DateTimeFormat('es-BO',{ timeZone:tz, day:'2-digit', month:'long', year:'numeric' }).format(date);
   }catch{
     const d=new Date(date);
-    const meses=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-    const dd=String(d.getDate()).padStart(2,'0'); return `${dd} de ${meses[d.getMonth()]} de ${d.getFullYear()}`;
+    const m=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    const dd=String(d.getDate()).padStart(2,'0'); return `${dd} de ${m[d.getMonth()]} de ${d.getFullYear()}`;
   }
 }
 function findAsset(p){ const abs = path.resolve(p); return fs.existsSync(abs) ? abs : null; }
@@ -31,7 +31,7 @@ function strokeRect(doc,x,y,w,h,color=GRID,width=.8){ doc.save(); doc.strokeColo
 
 /* ====== Fondo de plantilla ====== */
 const TEMPLATE_IMG = findAsset('./public/cotizacion.jpeg') || findAsset('./public/cotizacion.jpg') || null;
-/* Título aún más arriba y más aire con la tabla */
+/* Área segura */
 const SAFE_INSET = { left: 74, top: 70, right: 40, bottom: 70 };
 const MAPS_FALLBACK_URL = 'https://share.google/wUfCQTPu0oaYZmStj';
 
@@ -54,7 +54,6 @@ function registerFonts(doc){
   reg.medium = medium ? 'FuturaMedium' : 'Helvetica-Bold';
   reg.bold   = heavy  ? 'FuturaHeavy'  : 'Helvetica-Bold';
   reg.light  = light  ? 'FuturaLight'  : 'Helvetica';
-
   return reg;
 }
 
@@ -86,21 +85,24 @@ export async function renderQuotePDF(quote, outPath, company = {}){
 
   /* ===== Header ===== */
   doc.font(F.bold).fontSize(19).fillColor(BRAND.dark).text('COTIZACIÓN', xMargin, y, { width: usableW });
-  y += 10; // MÁS separación con la fecha
+  // Usa el cursor actual para evitar solapamiento (no posiciones absolutas seguidas)
+  y = doc.y + 6;                                // separación clara con la fecha
   doc.font(F.medium).fontSize(11).fillColor(BRAND.dark)
      .text(`Fecha: ${fmtLongDate(quote.fecha || new Date(), TZ)}`, xMargin, y, { width: usableW });
-  y += 20;
+  y = doc.y + 12;                                // aire antes de los datos del cliente
 
   // Datos del cliente
   const c = quote.cliente || {};
   const L = (label, val) => {
     doc.font(F.medium).fillColor(BRAND.dark).text(`${label}: `, xMargin, y, { continued:true });
     doc.font(F.body).fillColor('#111').text(ensure(val,'-'));
+    y = doc.y + 2;                               // cada línea usa la y real y agrega 2px de aire
   };
-  L('Nombre', c.nombre);               y += 12;
-  L('Departamento', c.departamento);   y += 12;
-  L('Zona', c.zona);                   y += 12;
-  L('Pago', 'Contado');                y += 16; // MÁS AIRE ANTES DE LA TABLA
+  L('Nombre', c.nombre);
+  L('Departamento', c.departamento);
+  L('Zona', c.zona);
+  L('Pago', 'Contado');
+  y = doc.y + 14;                                // MÁS AIRE ANTES DE LA TABLA
 
   /* ===== Tabla ===== */
   const rate = Number(process.env.USD_BOB_RATE || quote.rate || 6.96);
