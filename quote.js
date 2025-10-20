@@ -13,9 +13,9 @@ const DELETE_AFTER_MS = parseInt(process.env.QUOTE_DELETE_AFTER_MS || (10 * 60 *
 const MAX_FILE_AGE_MS = parseInt(process.env.QUOTE_MAX_FILE_AGE_MS || (2 * 60 * 60 * 1000), 10);
 const MAX_FILES_KEEP  = parseInt(process.env.QUOTE_MAX_FILES_KEEP || '200', 10);
 
-// Branding/ajustes opcionales (no se imprime ningún nombre fijo)
+// Branding/ajustes opcionales
 const COMPANY = {
-  brandName: (process.env.BRAND_NAME || '').trim(),       // opcional, puede ir vacío
+  brandName: (process.env.BRAND_NAME || '').trim(),
   logoPath:  (process.env.LOGO_PATH  || '').trim() || null,
   mapsUrl:   (process.env.MAPS_URL   || '').trim() || null,
   storeName: (process.env.STORE_NAME || 'Almacén Central').trim(),
@@ -106,10 +106,6 @@ async function waSendDocument(to, mediaId, filename, caption=''){
 
 /**
  * Genera y envía un PDF de cotización por WhatsApp (lee precios desde Sheets).
- *
- * @param {string} to - Número destino (WhatsApp).
- * @param {object} session - Objeto de sesión/estado.
- * @returns {Promise<{ok:boolean, mediaId:string|null, path:string, filename:string, caption:string, quoteId?:string}>}
  */
 export async function sendAutoQuotePDF(to, session){
   await _acquire();
@@ -124,11 +120,8 @@ export async function sendAutoQuotePDF(to, session){
 
     const clienteName = cleanName(quote?.cliente?.nombre || session?.profileName || 'Cliente');
 
-    // Nombre interno (archivo en disco) con timestamp para evitar colisiones
     const stamp = new Date().toISOString().replace(/[:.]/g,'-');
     const filenameFS = `${cleanName(`COT - ${clienteName} - ${stamp}`)}.pdf`;
-
-    // Nombre visible para WhatsApp (neutral)
     const filenameDisplay = `${cleanName(`COTIZACION - ${clienteName}`)}.pdf`;
 
     const outDir = path.resolve('./data/quotes');

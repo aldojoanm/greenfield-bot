@@ -6,14 +6,11 @@ import PDFDocument from 'pdfkit';
 const TZ = process.env.TIMEZONE || 'America/La_Paz';
 
 /* ====== Colores ====== */
-const BRAND = { primary: '#264229', dark: '#264229' }; 
+const BRAND = { primary: '#264229', dark: '#264229' }; // verde exacto
 const GRID  = '#6C7A73';
-const TINTS = {
-  headerBG: '#E9F4EE',
-  rowBG:    '#F6FBF8',
-  totalBG:  '#DDF0E6',
-};
+const TINTS = { headerBG:'#E9F4EE', rowBG:'#F6FBF8', totalBG:'#DDF0E6' };
 
+/* ====== Utils ====== */
 const money   = (n)=> (Number(n||0)).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 const round2  = (n)=> Math.round((Number(n)||0)*100)/100;
 const toCents = (n)=> Math.round((Number(n)||0)*100);
@@ -21,30 +18,28 @@ const ensure  = (v,d)=> (v==null||v==='')?d:v;
 
 function fmtLongDate(date=new Date(), tz=TZ){
   try{
-    return new Intl.DateTimeFormat('es-BO', {
-      timeZone: tz, day:'2-digit', month:'long', year:'numeric'
-    }).format(date);
+    return new Intl.DateTimeFormat('es-BO',{ timeZone:tz, day:'2-digit', month:'long', year:'numeric' }).format(date);
   }catch{
     const d=new Date(date);
-    const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-    const dd = String(d.getDate()).padStart(2,'0');
-    return `${dd} de ${meses[d.getMonth()]} de ${d.getFullYear()}`;
+    const meses=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    const dd=String(d.getDate()).padStart(2,'0'); return `${dd} de ${meses[d.getMonth()]} de ${d.getFullYear()}`;
   }
 }
-
 function findAsset(p){ const abs = path.resolve(p); return fs.existsSync(abs) ? abs : null; }
 function fillRect(doc,x,y,w,h,color){ doc.save(); doc.fillColor(color).rect(x,y,w,h).fill().restore(); }
 function strokeRect(doc,x,y,w,h,color=GRID,width=.8){ doc.save(); doc.strokeColor(color).lineWidth(width).rect(x,y,w,h).stroke().restore(); }
 
+/* ====== Fondo de plantilla ====== */
 const TEMPLATE_IMG = findAsset('./public/cotizacion.jpeg') || findAsset('./public/cotizacion.jpg') || null;
-const SAFE_INSET = { left: 74, top: 84, right: 40, bottom: 70 };
+/* Título aún más arriba y más aire con la tabla */
+const SAFE_INSET = { left: 74, top: 70, right: 40, bottom: 70 };
 const MAPS_FALLBACK_URL = 'https://share.google/wUfCQTPu0oaYZmStj';
 
+/* ====== Tipografías Futura ====== */
 function registerFonts(doc){
   const fontsDir = './public/fonts';
   const p = (f)=> findAsset(path.join(fontsDir, f));
   const reg = {};
-
   const book   = p('FuturaStdBook.otf');
   const medium = p('FuturaStdMedium.otf');
   const heavy  = p('FuturaStdHeavy.otf');
@@ -63,6 +58,7 @@ function registerFonts(doc){
   return reg;
 }
 
+/* ====== Render ====== */
 export async function renderQuotePDF(quote, outPath, company = {}){
   const dir = path.dirname(outPath);
   try{ fs.mkdirSync(dir,{recursive:true}); }catch{}
@@ -88,12 +84,14 @@ export async function renderQuotePDF(quote, outPath, company = {}){
   const bottomLimit = pageH - SAFE_INSET.bottom;
   let y = SAFE_INSET.top;
 
-  doc.font(F.bold).fontSize(18).fillColor(BRAND.dark).text('COTIZACIÓN', xMargin, y, { width: usableW });
-  y += 16;
-  doc.font(F.medium).fontSize(10).fillColor('#111')
+  /* ===== Header ===== */
+  doc.font(F.bold).fontSize(19).fillColor(BRAND.dark).text('COTIZACIÓN', xMargin, y, { width: usableW });
+  y += 10; // MÁS separación con la fecha
+  doc.font(F.medium).fontSize(11).fillColor(BRAND.dark)
      .text(`Fecha: ${fmtLongDate(quote.fecha || new Date(), TZ)}`, xMargin, y, { width: usableW });
-  y += 18;
+  y += 20;
 
+  // Datos del cliente
   const c = quote.cliente || {};
   const L = (label, val) => {
     doc.font(F.medium).fillColor(BRAND.dark).text(`${label}: `, xMargin, y, { continued:true });
@@ -102,8 +100,9 @@ export async function renderQuotePDF(quote, outPath, company = {}){
   L('Nombre', c.nombre);               y += 12;
   L('Departamento', c.departamento);   y += 12;
   L('Zona', c.zona);                   y += 12;
-  L('Pago', 'Contado');                y += 8;
+  L('Pago', 'Contado');                y += 16; // MÁS AIRE ANTES DE LA TABLA
 
+  /* ===== Tabla ===== */
   const rate = Number(process.env.USD_BOB_RATE || quote.rate || 6.96);
 
   const baseCols = [
@@ -189,6 +188,7 @@ export async function renderQuotePDF(quote, outPath, company = {}){
     y += rowH;
   }
 
+  // Totales
   const totalUSD = accUsdCents/100;
   const totalBs  = accBsCents/100;
 
@@ -213,8 +213,9 @@ export async function renderQuotePDF(quote, outPath, company = {}){
      .text(`$ ${money(totalUSD)}`, tableX + wUntilCol5, y+5, { width:wCol6-6, align:'right' });
   doc.text(`${money(totalBs)} Bs`, tableX + wUntilCol5 + wCol6 + 6, y+5, { width:wCol7-12, align:'left' });
 
-  y += totalRowH + 10;
+  y += totalRowH + 12;
 
+  /* ===== Textos inferiores ===== */
   const drawH2 = (t)=>{
     ensureSpace(20);
     doc.font(F.medium).fontSize(11).fillColor(BRAND.dark).text(t, xMargin, y);
@@ -229,7 +230,7 @@ export async function renderQuotePDF(quote, outPath, company = {}){
 
   drawH2('Lugar de entrega');
   const entrega = [
-    ensure(company.storeName,'Almacén Greenfield'),
+    ensure(company.storeName,'Almacén Central'),
     'Horarios de atención: Lunes a Viernes 08:30–12:30 y 14:30–18:30'
   ];
   for (const line of entrega){ ensureSpace(14); doc.text(line, xMargin, y, { width: usableW }); y = doc.y; }

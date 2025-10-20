@@ -9,6 +9,14 @@ function readJSON(p) {
   catch { return Array.isArray ? [] : {}; }
 }
 
+/* ===== Helpers numéricos robustos (coma o punto) ===== */
+function dec(v){
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  const s = String(v ?? '').replace(/\s/g,'').replace(',', '.');
+  const m = s.match(/-?\d+(?:\.\d+)?/);
+  return m ? Number(m[0]) : 0;
+}
+
 /* ===== Normalización ===== */
 function canonUnit(u=''){
   const t = String(u).toUpperCase();
@@ -54,19 +62,35 @@ function buildPriceIndex(list=[]) {
   const bySku = new Map();           // clave: SKU exacto
   const byCanon = new Map();         // clave: SKU canónico
   const byBasePack = new Map();      // clave: NOMBRE|UNIDAD|TAMANIO
-
   const keyBP = (base,unit,size)=> `${normName(base)}|${unit}|${size}`;
 
-  for (const r of (list||[])) {
-    const sku = String(r.sku||'').trim();
-    if (!sku) continue;
-    const cs = canonSku(sku);
-    bySku.set(sku, r);
-    byCanon.set(cs, r);
+  for (const r0 of (list||[])) {
+    // Aceptar múltiples formatos de entrada (desde tu Excel/Sheets)
+    const name = (r0.PRODUCTO ?? r0.producto ?? r0.nombre ?? '').toString().trim();
+    const pres = (r0.PRESENTACION ?? r0.presentacion ?? r0.envase ?? '').toString().trim();
+    const unit = (r0.UNIDAD ?? r0.unidad ?? '').toString().trim();
+    const skuRaw = (r0.sku ?? r0.SKU ?? '').toString().trim() ||
+                   (name && pres ? `${name}-${pres}${unit?` ${unit}`:''}` : '');
 
-    const { base, pack } = splitSku(sku);
-    if (base && pack){
-      byBasePack.set(keyBP(base, pack.unit, pack.size), r);
+    const row = {
+      sku: skuRaw,
+      nombre: name,
+      presentacion: pres,
+      unidad: unit,
+      precio_usd: dec(r0['PRECIO (USD)'] ?? r0.precio_usd),
+      precio_bs : dec(r0['PRECIO (BS)']  ?? r0.precio_bs)
+    };
+
+    if (!row.sku) continue;
+
+    const cs = canonSku(row.sku);
+    bySku.set(row.sku, row);
+    byCanon.set(cs, row);
+
+    const { base, pack } = splitSku(row.sku);
+    if (base && (pack || parsePackFromText(`${pres} ${unit}`))){
+      const P = pack || parsePackFromText(`${pres} ${unit}`);
+      byBasePack.set(keyBP(base, P.unit, P.size), row);
     }
   }
   return { list, bySku, byCanon, byBasePack };
@@ -126,8 +150,8 @@ function resolvePriceUSD(idx, { sku, nombre, presentacion }, rate){
   }
   if (!row) return 0;
 
-  let usd = Number(row?.precio_usd || 0);
-  if (!usd && Number(row?.precio_bs||0)) usd = Number(row.precio_bs)/rate;
+  let usd = dec(row?.precio_usd);
+  if (!usd && dec(row?.precio_bs)) usd = dec(row.precio_bs)/rate;
   return asMoney(usd || 0);
 }
 
