@@ -50,11 +50,11 @@ function parsePackFromText(t=''){
 function splitSku(s=''){
   const raw = String(s||'').trim();
   const i = raw.lastIndexOf('-');
-  if (i < 0) return { base: raw, pack: null, canon: canonSku(raw) };
+  if (i < 0) return { base: raw, pack: null, tail: '', canon: canonSku(raw) };
   const base = raw.slice(0, i);
   const tail = raw.slice(i+1);
   const pack = parsePackFromText(tail) || parsePackFromText('-'+tail) || parsePackFromText(tail.replace(/-/g,' '));
-  return { base, pack, canon: canonSku(raw) };
+  return { base, pack, tail, canon: canonSku(raw) };
 }
 
 /* ===== Índices flexibles sobre la lista de precios ===== */
@@ -65,31 +65,33 @@ function buildPriceIndex(list=[]) {
   const keyBP = (base,unit,size)=> `${normName(base)}|${unit}|${size}`;
 
   for (const r0 of (list||[])) {
-    // Aceptar múltiples formatos de entrada (desde tu Excel/Sheets)
-    const name = (r0.PRODUCTO ?? r0.producto ?? r0.nombre ?? '').toString().trim();
-    const pres = (r0.PRESENTACION ?? r0.presentacion ?? r0.envase ?? '').toString().trim();
-    const unit = (r0.UNIDAD ?? r0.unidad ?? '').toString().trim();
-    const skuRaw = (r0.sku ?? r0.SKU ?? '').toString().trim() ||
-                   (name && pres ? `${name}-${pres}${unit?` ${unit}`:''}` : '');
+    // Estructura que devuelve prices.js
+    const skuRaw = String(r0.sku ?? '').trim();
+    if (!skuRaw) continue;
 
     const row = {
       sku: skuRaw,
-      nombre: name,
-      presentacion: pres,
-      unidad: unit,
-      precio_usd: dec(r0['PRECIO (USD)'] ?? r0.precio_usd),
-      precio_bs : dec(r0['PRECIO (BS)']  ?? r0.precio_bs)
+      unidad: canonUnit(r0.unidad ?? ''),
+      precio_usd: dec(r0.precio_usd),
+      precio_bs : dec(r0.precio_bs),
+      // opcionales (por compatibilidad cuando prices.js traiga columnas crudas)
+      nombre: r0.PRODUCTO ?? r0.producto ?? r0.nombre ?? ''
     };
-
-    if (!row.sku) continue;
 
     const cs = canonSku(row.sku);
     bySku.set(row.sku, row);
     byCanon.set(cs, row);
 
-    const { base, pack } = splitSku(row.sku);
-    if (base && (pack || parsePackFromText(`${pres} ${unit}`))){
-      const P = pack || parsePackFromText(`${pres} ${unit}`);
+    // Base y pack. Si el SKU no trae unidad (ej. "-0,5"), usaremos 'unidad' de la fila
+    const { base, pack, tail } = splitSku(row.sku);
+    let P = pack;
+    if (!P){
+      const m = String(tail||'').match(/(\d+(?:[.,]\d+)?)/);
+      if (m && row.unidad){
+        P = { size: parseFloat(m[1].replace(',','.')), unit: row.unidad };
+      }
+    }
+    if (base && P){
       byBasePack.set(keyBP(base, P.unit, P.size), row);
     }
   }
@@ -217,6 +219,6 @@ export async function buildQuoteFromSession(s, opts={}) {
     total_usd: total,
     min_order_usd: 3000,
     moneda: 'USD',
-    price_catalog: idx.list   // ← para lookup en el PDF
+    price_catalog: idx.list
   };
 }
