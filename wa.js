@@ -1099,16 +1099,61 @@ router.post('/wa/webhook', async (req,res)=>{
     const parsedCart = parseCartFromText(textRaw);
     const isInter = msg?.type === 'interactive';
     const interId = isInter ? (msg.interactive?.button_reply?.id || msg.interactive?.list_reply?.id || '') : '';
+// ====== PRIORIDAD: si hay flujo de asesor activo, manejar aquí ======
+const flowActive = advFlow(fromId);
+if (interId === 'ADV_START') {
+  await advStart(fromId, parsedCart || { items: [] });
+  return res.sendStatus(200);
+}
 
-    if (interId === 'V_MENU_QUOTE') {
+// Opción 2: palabra clave del HUB o del asesor, p.ej. "COTIZAR_TERCERO"
+if (!flowActive && msg.type === 'text' && /^COTIZAR_TERCERO$/i.test(textRaw)) {
+  await advStart(fromId, parsedCart || { items: [] });
+  return res.sendStatus(200);
+}
+
+if (flowActive && parsedCart) {
+  // se pegó el carrito dentro del flujo de asesor
+  flowActive.s.vars.cart = parsedCart.items || [];
+  advSet(fromId, flowActive);
+  await toText(fromId,
+`📦 Carrito recibido.
+
+Ahora, para la *cotización del cliente*, respóndeme *en un solo mensaje*:
+
+NOMBRE: Juan Pérez
+DEPARTAMENTO: Santa Cruz
+ZONA: Norte`);
+  return res.sendStatus(200);
+}
+
+if (flowActive && msg.type === 'text') {
+  const txt = (msg.text?.body || '').trim();
+  const { nombre, departamento, zona } = parseAdvisorForm(txt);
+
+  const missing = [];
+  if (!nombre)       missing.push('NOMBRE');
+  if (!departamento) missing.push('DEPARTAMENTO');
+  if (departamento === 'Santa Cruz' && !zona) missing.push('ZONA');
+
+  if (missing.length) {
     await toText(fromId,
-      `Te dejo nuestro *catálogo*.\n` +
-      `${CATALOG_URL}\n\n` +
-      `👉 Añade tus productos y toca *Enviar a WhatsApp*. Yo recibiré tu pedido y te prepararé tu cotización.`
+      'Faltó completar: *' + missing.join(', ') + '*.\n' +
+      'Por favor reenvía *en un solo mensaje* con este formato:\n\n' +
+      'NOMBRE: Juan Pérez\nDEPARTAMENTO: Santa Cruz\nZONA: Norte'
     );
-    await advStart(fromId, { items: [] });
     return res.sendStatus(200);
   }
+
+  flowActive.s.profileName       = canonName(nombre);
+  flowActive.s.vars.departamento = departamento;
+  flowActive.s.vars.subzona      = zona || flowActive.s.vars.subzona || 'ND';
+  advSet(fromId, flowActive);
+
+  await advFinalize(fromId);   // genera y envía el PDF
+  return res.sendStatus(200);
+}
+
 
     if (parsedCart && !isAdvisor(fromId)) {
       const s0 = S(fromId);
