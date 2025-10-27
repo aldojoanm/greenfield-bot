@@ -1100,17 +1100,15 @@ router.post('/wa/webhook', async (req,res)=>{
     const isInter = msg?.type === 'interactive';
     const interId = isInter ? (msg.interactive?.button_reply?.id || msg.interactive?.list_reply?.id || '') : '';
 
-  if (isAdvisor(fromId) && interId === 'V_MENU_QUOTE') {
+    if (interId === 'V_MENU_QUOTE') {
     await toText(fromId,
       `Te dejo nuestro *catálogo*.\n` +
       `${CATALOG_URL}\n\n` +
       `👉 Añade tus productos y toca *Enviar a WhatsApp*. Yo recibiré tu pedido y te prepararé tu cotización.`
     );
     await advStart(fromId, { items: [] });
-
     return res.sendStatus(200);
   }
-
 
     if (parsedCart && !isAdvisor(fromId)) {
       const s0 = S(fromId);
