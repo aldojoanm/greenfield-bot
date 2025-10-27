@@ -4,13 +4,11 @@ import path from 'path';
 import multer from 'multer';
 import { fileURLToPath } from 'url';
 
-// Routers existentes
 import messengerRouter from './index.js';
 import pricesRouter from './prices.js';
 import waRouter from './wa.js';
-import vendorsRouter from './wa.vendedores.js'; // ← nuevo front para vendedores
+import vendorsRouter from './wa.vendedores.js';
 
-// ========= Sheets (para /api/catalog y el inbox) =========
 import {
   summariesLastNDays,
   historyForIdLastNDays,
@@ -27,37 +25,27 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
 const TZ = process.env.TIMEZONE || 'America/La_Paz';
 
-// ========= Estáticos =========
 app.use('/image', express.static(path.join(__dirname, 'image')));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// UI del inbox
 app.get('/inbox', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'agent.html'));
 });
 
-// Básicos
 app.get('/', (_req, res) => res.send('OK'));
 app.get('/healthz', (_req, res) => res.json({ ok: true }));
 app.get('/privacidad', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'privacidad.html'));
 });
 
-/* ================== MONTAJE DE ROUTERS ==================
-   Importante: vendorsRouter VA ANTES de waRouter, porque ambos
-   escuchan /wa/webhook y el de vendedores debe interceptar
-   a los números definidos en ENV.
-========================================================= */
-app.use(vendorsRouter);   // ← intercepta vendedores y delega
-app.use(messengerRouter); // FB Messenger (GET/POST /webhook)
-app.use(waRouter);        // WhatsApp general (GET/POST /wa/webhook)
-app.use(pricesRouter);    // /api/prices (si lo tienes en prices.js)
+app.use(vendorsRouter);
+app.use(messengerRouter);
+app.use(waRouter);
+app.use(pricesRouter);
 
-// ========= Catálogo desde Sheet de Precios =========
 app.get('/api/catalog', async (_req, res) => {
   try {
     const { prices = [], rate = 6.96 } = await readPrices();
-
     const byProduct = new Map();
     for (const p of prices) {
       const sku = String(p.sku || '').trim();
@@ -68,12 +56,10 @@ app.get('/api/catalog', async (_req, res) => {
         presentacion = parts.join('-').trim();
       }
       if (!producto) continue;
-
       const usd = Number(p.precio_usd || 0);
       const bs  = Number(p.precio_bs  || 0) || (usd ? +(usd * rate).toFixed(2) : 0);
       const unidad = String(p.unidad || '').trim();
       const categoria = String(p.categoria || '').trim() || 'Herbicidas';
-
       const cur = byProduct.get(producto) || {
         nombre: producto,
         categoria,
@@ -91,7 +77,6 @@ app.get('/api/catalog', async (_req, res) => {
       }
       byProduct.set(producto, cur);
     }
-
     const items = [...byProduct.values()].sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'));
     res.json({ ok:true, rate, items, count: items.length, source:'sheet:PRECIOS' });
   } catch (e) {
@@ -100,10 +85,9 @@ app.get('/api/catalog', async (_req, res) => {
   }
 });
 
-// ========= AUTH simple para Inbox =========
 const AGENT_TOKEN = process.env.AGENT_TOKEN || '';
 function validateToken(token) {
-  if (!AGENT_TOKEN) return true; // si no configuras token, acepta cualquiera
+  if (!AGENT_TOKEN) return true;
   return token && token === AGENT_TOKEN;
 }
 function auth(req, res, next) {
@@ -113,7 +97,6 @@ function auth(req, res, next) {
   next();
 }
 
-// ========= SSE (EventSource) =========
 const sseClients = new Set();
 function sseBroadcast(event, data) {
   const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
@@ -122,24 +105,17 @@ function sseBroadcast(event, data) {
 app.get('/wa/agent/stream', (req, res) => {
   const token = String(req.query.token || '');
   if (!validateToken(token)) return res.sendStatus(401);
-
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('Connection', 'keep-alive');
   res.write(': hi\n\n');
-
-  const ping = setInterval(() => {
-    try { res.write('event: ping\ndata: "💓"\n\n'); } catch {}
-  }, 25000);
-
+  const ping = setInterval(() => { try { res.write('event: ping\ndata: "💓"\n\n'); } catch {} }, 25000);
   sseClients.add(res);
   req.on('close', () => { clearInterval(ping); sseClients.delete(res); });
 });
 
-// ========= Estado efímero para UI =========
-const STATE = new Map(); // id -> { human:boolean, unread:number, last?:string, name?:string }
+const STATE = new Map();
 
-// ========= API del Inbox (Sheets Hoja 4) =========
 app.post('/wa/agent/import-whatsapp', auth, async (req, res) => {
   try {
     const days = Number(req.body?.days || 3650);

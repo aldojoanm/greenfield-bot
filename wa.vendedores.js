@@ -1,17 +1,4 @@
-// wa.vendedores.js
 import express from "express";
-
-/**
- * ESTE ARCHIVO SOLO INTERCEPTA A VENDEDORES (definidos por ENV) Y LES MUESTRA UN MENÚ.
- * - Si el vendedor elige "Realizar cotización" => delega al flujo completo de wa.js (asesor)
- * - Si elige "Registrar gastos" => delega al flujo de wa.sheets.js (gastos)
- *
- * Para todos los demás contactos: next() y que lo manejen tus otros routers como siempre.
- *
- * IMPORTANTE:
- *   - Monta este router ANTES que los routers de wa.js y wa.sheets.js.
- *   - Configura el ENV WHATSAPP_VENDOR_CONTACTS (JSON) o WHATSAPP_VENDOR_CONTACTS_CSV.
- */
 
 const router = express.Router();
 
@@ -21,16 +8,10 @@ const WA_PHONE_ID = process.env.WHATSAPP_PHONE_ID || "";
 const DEBUG = process.env.DEBUG_LOGS === "1";
 const dbg = (...a) => { if (DEBUG) console.log("[VENDORS]", ...a); };
 
-// ====== Carga de contactos de vendedores desde ENV ======
-/**
- * Formatos aceptados:
- * 1) WHATSAPP_VENDOR_CONTACTS como JSON de { "5917XXXXXXXX": "Nombre Apellido", ... }
- * 2) WHATSAPP_VENDOR_CONTACTS_CSV como: 5917XXXXXXX:Pedro Perez,5917YYYYYYY:Maria Lopez
- */
 function parseVendorsFromEnv() {
   const byJson = process.env.WHATSAPP_VENDOR_CONTACTS || "";
   if (byJson.trim()) {
-    try { return JSON.parse(byJson); } catch { /* fallthrough */ }
+    try { return JSON.parse(byJson); } catch {}
   }
   const byCsv = process.env.WHATSAPP_VENDOR_CONTACTS_CSV || "";
   if (byCsv.trim()) {
@@ -42,24 +23,15 @@ function parseVendorsFromEnv() {
     }
     return map;
   }
-  // Valores de ejemplo para que edites luego
-  return {
-    "59170000000": "Pedro Perez",
-    "59171111111": "Maria Lopez"
-  };
+  return { "59170000000": "Pedro Perez", "59171111111": "Maria Lopez" };
 }
 const VENDORS = parseVendorsFromEnv();
 const vendorNameOf = (waId="") => VENDORS[String(waId).replace(/[^\d]/g,"")] || null;
 
-// ====== Memoria efímera (solo para saber si está en menú / subflujo) ======
-const STATE = new Map();  // from -> { greeted:boolean, mode:null|'advisor'|'sheets' }
-const getS = (id) => {
-  if (!STATE.has(id)) STATE.set(id, { greeted:false, mode:null });
-  return STATE.get(id);
-};
+const STATE = new Map();
+const getS = (id) => { if (!STATE.has(id)) STATE.set(id, { greeted:false, mode:null }); return STATE.get(id); };
 const setS = (id, v) => STATE.set(id, v);
 
-// ====== Utilidades de WhatsApp API ======
 async function waSendQ(to, payload) {
   const url = `https://graph.facebook.com/v20.0/${WA_PHONE_ID}/messages`;
   if (DEBUG) dbg("SEND", { to, type: payload.type || payload?.interactive?.type });
@@ -94,12 +66,11 @@ const toButtons = (to, body, buttons = []) =>
     },
   });
 
-// ====== UI de bienvenida/menu para vendedores ======
 async function showVendorMenu(to, name) {
   const saludo = `Hola ${name}, soy el asistente de *Greenfield*.\n¿En qué te puedo ayudar?`;
   await toButtons(to, saludo, [
     { title: "Realizar cotización", payload: "V_MENU_QUOTE" },
-    { title: "Registrar gastos",    payload: "V_MENU_EXP"   },
+    { title: "Registrar gastos", payload: "V_MENU_EXP" },
   ]);
 }
 
@@ -109,36 +80,35 @@ async function showBackToMenu(to) {
   ]);
 }
 
-// ====== Webhook verify para este router (pasa si no aplica) ======
+const processed = new Map();
+const PROCESSED_TTL = 5 * 60 * 1000;
+setInterval(() => { const now = Date.now(); for (const [k, ts] of processed) if (now - ts > PROCESSED_TTL) processed.delete(k); }, 60000);
+const seenWamid = (id) => { if (!id) return false; const now = Date.now(); const last = processed.get(id) || 0; processed.set(id, now); return (now - last) < PROCESSED_TTL; };
+
+const CATALOG_URL = process.env.CATALOG_URL || "https://greenfield-bot.onrender.com/catalog.html";
+
 router.get("/wa/webhook", (req, res, next) => {
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
   const chall = req.query["hub.challenge"];
   if (mode === "subscribe" && token === VERIFY_TOKEN) return res.status(200).send(String(chall || ""));
-  // No es verificación válida: no consumimos la ruta, dejamos a otros routers responder 403 si corresponde
   return next();
 });
 
-// ====== POST webhook: intercepta SOLO a vendedores ======
-// NOTA: si NO es vendedor => next() y lo manejan tus routers existentes (wa.js / wa.sheets.js)
 router.post("/wa/webhook", async (req, res, next) => {
   try {
     const entry  = req.body?.entry?.[0];
     const change = entry?.changes?.[0];
     const value  = change?.value;
     const msg    = value?.messages?.[0];
-
-    if (!msg) return next(); // nada que procesar
+    if (!msg) return next();
+    if (seenWamid(msg.id)) return res.sendStatus(200);
     const from = (msg.from || "").replace(/[^\d]/g, "");
     const vendorName = vendorNameOf(from);
-
-    // Si no es vendedor, pasamos al siguiente router
     if (!vendorName) return next();
 
-    // Es vendedor: manejamos menú y, tras elegir, delegamos al flujo correspondiente
     const s = getS(from);
 
-    // 1) Primera vez: saludo + menú
     if (!s.greeted) {
       s.greeted = true;
       setS(from, s);
@@ -146,18 +116,16 @@ router.post("/wa/webhook", async (req, res, next) => {
       return res.sendStatus(200);
     }
 
-    // 2) Botones del menú
     if (msg.type === "interactive") {
       const br = msg.interactive?.button_reply;
       const lr = msg.interactive?.list_reply;
       const id = (br?.id || lr?.id || "").toString();
 
       if (id === "V_MENU_QUOTE") {
-        s.mode = "advisor"; setS(from, s);
-        // Mensaje de transición y delega al flujo de wa.js
-        await toText(from, "Perfecto, seguimos con *cotización*.");
-        // Delegamos el MISMO req/res al router de asesor
-        return advisorDelegate(req, res, next);
+        s.mode = null; setS(from, s);
+        await toText(from, `Perfecto. Para cotizar, abre el *catálogo*, añade tus productos y toca *Enviar a WhatsApp*:\n${CATALOG_URL}`);
+        await showBackToMenu(from);
+        return res.sendStatus(200);
       }
 
       if (id === "V_MENU_EXP") {
@@ -171,15 +139,12 @@ router.post("/wa/webhook", async (req, res, next) => {
         await showVendorMenu(from, vendorName);
         return res.sendStatus(200);
       }
-      // Si otros botones (propios de los subflujos) llegan aquí por error, intentamos delegar según modo
-      if (s.mode === "advisor") return advisorDelegate(req, res, next);
-      if (s.mode === "sheets")  return sheetsDelegate(req, res, next);
-      // Sin modo: volver a menú
+
+      if (s.mode === "sheets") return sheetsDelegate(req, res, next);
       await showVendorMenu(from, vendorName);
       return res.sendStatus(200);
     }
 
-    // 3) Texto libre: atajos
     if (msg.type === "text") {
       const text = (msg.text?.body || "").trim().toLowerCase();
       if (text === "menu" || text === "inicio") {
@@ -187,40 +152,22 @@ router.post("/wa/webhook", async (req, res, next) => {
         await showVendorMenu(from, vendorName);
         return res.sendStatus(200);
       }
-
-      // Si ya eligió un modo, delegamos al subflujo correspondiente
-      if (s.mode === "advisor") return advisorDelegate(req, res, next);
-      if (s.mode === "sheets")  return sheetsDelegate(req, res, next);
-
-      // Si aún no eligió, re-mostrar menú
+      if (s.mode === "sheets") return sheetsDelegate(req, res, next);
       await showVendorMenu(from, vendorName);
       return res.sendStatus(200);
     }
 
-    // 4) Otros tipos (media, etc.): delega si hay modo activo; si no, menú
-    if (s.mode === "advisor") return advisorDelegate(req, res, next);
-    if (s.mode === "sheets")  return sheetsDelegate(req, res, next);
-
+    if (s.mode === "sheets") return sheetsDelegate(req, res, next);
     await showVendorMenu(from, vendorName);
     return res.sendStatus(200);
   } catch (e) {
     console.error("[VENDORS] webhook error", e);
-    // No cortamos la cadena: si algo falló aquí, dejamos que otros routers intenten manejar
     return next();
   }
 });
 
-import advisorRouter from "./wa.js";        // tu router grande de cotizaciones
-import sheetsRouter  from "./wa.sheets.js"; // tu router de gastos
+import sheetsRouter  from "./wa.sheets.js";
 
-async function advisorDelegate(req, res, next) {
-  try {
-    return advisorRouter(req, res, next);
-  } catch (e) {
-    console.error("[VENDORS] advisorDelegate error", e);
-    return next(e);
-  }
-}
 async function sheetsDelegate(req, res, next) {
   try {
     return sheetsRouter(req, res, next);
