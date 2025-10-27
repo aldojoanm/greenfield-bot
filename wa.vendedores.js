@@ -141,11 +141,13 @@ router.post("/wa/webhook", async (req, res, next) => {
       const lr = msg.interactive?.list_reply;
       const id = (br?.id || lr?.id || "").toString();
 
-      if (id === "V_MENU_QUOTE") {
-        // MODO ASESOR: el módulo del asesor se encarga de ENVIAR PRIMERO EL BLOQUE
-        s.mode = "advisor"; setS(from, s);
-        return advisorRouter(req, res, next);
-      }
+if (id === "V_MENU_QUOTE") {
+  s.mode = "advisor"; setS(from, s);
+  await toButtons(from, "Perfecto. ¿Iniciamos la cotización para tu cliente?", [
+    { title: "Iniciar cotización", payload: "ADV_START" },
+  ]);
+  return res.sendStatus(200);
+}
 
       if (id === "V_MENU_EXP") {
         s.mode = "sheets"; setS(from, s);
@@ -179,10 +181,13 @@ router.post("/wa/webhook", async (req, res, next) => {
         s.mode = "sheets"; setS(from, s);
         return sheetsRouter(req, res, next);
       }
-      if (/(cotiz|precio|presupuesto)/i.test(text)) {
-        s.mode = "advisor"; setS(from, s);
-        return advisorRouter(req, res, next);
-      }
+if (/(cotiz|precio|presupuesto)/i.test(text)) {
+  s.mode = "advisor"; setS(from, s);
+  await toButtons(from, "¿Iniciamos la cotización para tu cliente?", [
+    { title: "Iniciar cotización", payload: "ADV_START" },
+  ]);
+  return res.sendStatus(200);
+}
 
       // delega si hay modo activo
       if (s.mode === "advisor") return advisorRouter(req, res, next);
