@@ -5,7 +5,7 @@ import {
   todayTotalFor,
   todaySummary,
   lastKm,
-} from "./sheets.js";
+} from "./sheets.interno.js";
 
 const router = express.Router();
 
@@ -16,15 +16,40 @@ const DEBUG = process.env.DEBUG_LOGS === "1";
 const log = (...a) => console.log("[WA]", ...a);
 const dbg = (...a) => { if (DEBUG) console.log("[DBG]", ...a); };
 
-/* ======================= Estado ======================= */
+function parseVendorsFromEnv() {
+  const byJson = process.env.WHATSAPP_VENDOR_CONTACTS || "";
+  if (byJson.trim()) {
+    try { return JSON.parse(byJson); } catch { /* fallthrough */ }
+  }
+  const byCsv = process.env.WHATSAPP_VENDOR_CONTACTS_CSV || "";
+  if (byCsv.trim()) {
+    const map = {};
+    for (const chunk of byCsv.split(",").map(s => s.trim()).filter(Boolean)) {
+      const [phone, ...nameParts] = chunk.split(":");
+      const name = (nameParts.join(":") || "").trim();
+      if (phone && name) map[phone.replace(/[^\d]/g,"")] = name;
+    }
+    return map;
+  }
+  return {};
+}
+const VENDORS = parseVendorsFromEnv();
+const vendorNameOf = (waId="") => VENDORS[String(waId).replace(/[^\d]/g,"")] || null;
+
 const S = new Map();
 const getS = (id) => {
-  if (!S.has(id)) S.set(id, { etapa: "ask_area", pageIdx: 0, flow: null, lastKm: null });
+  if (!S.has(id)) S.set(id, {
+    greeted: false,
+    empleado: null,
+    lastKm: null,
+    etapa: "ask_categoria",
+    pageIdx: 0,
+    flow: null
+  });
   return S.get(id);
 };
 const setS = (id, v) => S.set(id, v);
 
-/* ======================= Envío WA ======================= */
 async function waSendQ(to, payload) {
   const url = `https://graph.facebook.com/v20.0/${WA_PHONE_ID}/messages`;
   dbg("SEND", { to, type: payload.type || payload?.interactive?.type });
@@ -60,7 +85,6 @@ const toButtons = (to, body, buttons = []) =>
     },
   });
 
-/** Lista paginada (máx 10 filas por mensaje) */
 async function toPagedList(to, { body, buttonTitle, rows, pageIdx, title }) {
   const PAGE_SIZE = 8; // 8 + Prev + Next = 10
   const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
@@ -89,50 +113,7 @@ async function toPagedList(to, { body, buttonTitle, rows, pageIdx, title }) {
   });
 }
 
-/* ======================= Categorías ======================= */
 const CATS = ["combustible", "alimentacion", "hospedaje", "peajes", "aceites", "llantas", "frenos", "otros"];
-
-/* ======== Prefiltro por Área + Responsables ======== */
-const AREAS = {
-  HORTIFRUT: ["Baneza Maldonado", "Moises Reyna", "Arturo Hinojosa", "Maira Cadima"],
-  AGROINDUSTRIA: [
-    "John Gaviria",
-    "Javier Bonilla",
-    "Miguel Gonzales",
-    "Miguel Mamani",
-    "Darwin Coimbra",
-    "Sebastian Rueda",
-    "Alejandro Llado",
-    "Diego Hinojosa",
-    "Armin Hurtado",
-    "Angel Suarez",
-    "Alvaro Mitma",
-    "Andres Moreno",
-  ],
-};
-
-const saludo = () =>
-  "Hola, soy el asistente de Greenfield. Registraré tus gastos por categoría.";
-
-/* ==== UI ==== */
-async function pedirArea(to) {
-  await toButtons(to, "Primero, elige el área:", [
-    { title: "Hortifrut", payload: "AREA_HORTIFRUT" },
-    { title: "Agroindustria", payload: "AREA_AGROINDUSTRIA" },
-  ]);
-}
-
-async function pedirResponsable(to, areaKey, pageIdx = 0) {
-  const key = String(areaKey || "").toUpperCase();
-  const names = (AREAS[key] || []).map((n, i) => ({ id: `EMP_${i}`, title: n }));
-  await toPagedList(to, {
-    body: "Selecciona al responsable:",
-    buttonTitle: "Elegir",
-    rows: names,
-    pageIdx,
-    title: key === "HORTIFRUT" ? "Hortifrut" : "Agroindustria",
-  });
-}
 
 async function pedirCategoria(to) {
   const rows = CATS.map((c) => ({ id: `CAT_${c}`, title: c[0].toUpperCase() + c.slice(1) }));
@@ -145,31 +126,30 @@ async function pedirCategoria(to) {
   });
 }
 
-/* ============ Flujo dinámico por categoría ============ */
 function buildFlow(categoria) {
   const cat = String(categoria || "").toLowerCase();
   if (cat === "combustible") {
     return [
-      { key: "lugar", prompt: "📍 ¿Dónde cargaste combustible? (ciudad/ubicación)" },
-      { key: "km", prompt: "⛽ Ingresa el kilometraje del vehículo (solo número)." },
-      { key: "monto", prompt: "💵 Ingresa el monto en Bs (ej.: 120.50)." },
+      { key: "lugar",   prompt: "📍 ¿Dónde cargaste combustible? (ciudad/ubicación)" },
+      { key: "km",      prompt: "⛽ Ingresa el kilometraje del vehículo (solo número)." },
+      { key: "monto",   prompt: "💵 Ingresa el monto en Bs (ej.: 120.50)." },
       { key: "factura", prompt: "🧾 Número de factura/recibo (o escribe “ninguno”)." },
     ];
   }
   if (["aceites", "llantas", "frenos"].includes(cat)) {
     return [
-      { key: "lugar", prompt: "📍 ¿Dónde se realizó el servicio/compra?" },
+      { key: "lugar",   prompt: "📍 ¿Dónde se realizó el servicio/compra?" },
       { key: "detalle", prompt: "📝 Detalla brevemente el servicio o producto." },
-      { key: "km", prompt: "🚗 Kilometraje del vehículo (solo número)." },
+      { key: "km",      prompt: "🚗 Kilometraje del vehículo (solo número)." },
       { key: "factura", prompt: "🧾 Número de factura/recibo (o “ninguno”)." },
-      { key: "monto", prompt: "💵 Monto en Bs (ej.: 250.00)." },
+      { key: "monto",   prompt: "💵 Monto en Bs (ej.: 250.00)." },
     ];
   }
-  // Alimentación / Hospedaje / Peajes / Otros
+
   return [
     { key: "detalle", prompt: "📝 Describe brevemente el gasto." },
     { key: "factura", prompt: "🧾 Número de factura/recibo (o “ninguno”)." },
-    { key: "monto", prompt: "💵 Ingresa el monto en Bs (ej.: 80.00)." },
+    { key: "monto",   prompt: "💵 Ingresa el monto en Bs (ej.: 80.00)." },
   ];
 }
 
@@ -179,14 +159,12 @@ function parseNumberFlexible(s = "") {
   return Number.isFinite(n) ? n : NaN;
 }
 
-/** Pregunta el paso actual, con recordatorio de KM si aplica */
 async function askCurrentStep(to, s) {
   const step = s.flow.steps[s.flow.i];
   if (step.key === "km") {
-    // Traer último KM y guardarlo en sesión
     const prev = await lastKm(s.empleado);
     s.lastKm = prev;
-    setS(to, s); // small trick: map key is phone; here we reuse "to" which is 'from'
+    setS(to, s);
     const tip = prev != null ? ` (último registrado: *${prev}*)` : " (no hay KM previo)";
     await toText(to, step.prompt + tip);
   } else {
@@ -194,7 +172,6 @@ async function askCurrentStep(to, s) {
   }
 }
 
-/* ======================= Webhook ======================= */
 router.get("/wa/webhook", (req, res) => {
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
@@ -212,22 +189,35 @@ router.post("/wa/webhook", async (req, res) => {
     const msg = value?.messages?.[0];
     if (!msg) return res.sendStatus(200);
 
-    const from = msg.from;
+    const from = (msg.from || "").replace(/[^\d]/g,"");
     const s = getS(from);
-    dbg("IN", { from, type: msg.type, etapa: s.etapa });
+    dbg("IN", { from, type: msg.type, etapa: s.etapa, empleado: s.empleado });
 
-    // saludo
     if (!s.greeted) {
       s.greeted = true;
-      await toText(from, saludo());
-      s.etapa = "ask_area";
+
+      const officialName = vendorNameOf(from);
+      let hoja = null;
+      if (officialName) {
+        hoja = await ensureEmployeeSheet(officialName);
+        s.empleado = hoja;
+        s.lastKm = await lastKm(s.empleado);
+        await toText(from, `Hola *${officialName}*, soy el asistente de Greenfield. Registraré tus gastos por categoría.`);
+      } else {
+        const fallback = `GENÉRICO – ${from}`;
+        hoja = await ensureEmployeeSheet(fallback);
+        s.empleado = hoja;
+        s.lastKm = await lastKm(s.empleado);
+        await toText(from, `Hola, tu número *${from}* no está en la lista oficial de vendedores.\nRegistraré en la hoja: *${fallback}*.\n(Pídele al admin que te agregue en WHATSAPP_VENDOR_CONTACTS para mostrar tu nombre oficial.)`);
+      }
+
+      s.etapa = "ask_categoria";
       s.pageIdx = 0;
       setS(from, s);
-      await pedirArea(from);
+      await pedirCategoria(from);
       return res.sendStatus(200);
     }
 
-    /* =================== INTERACTIVE =================== */
     if (msg.type === "interactive") {
       const br = msg.interactive?.button_reply;
       const lr = msg.interactive?.list_reply;
@@ -235,36 +225,14 @@ router.post("/wa/webhook", async (req, res) => {
       const idU = id.toUpperCase();
       dbg("INTERACTIVE", idU, "ETAPA", s.etapa);
 
-      if (idU === "NAV_NEXT" && s.etapa === "ask_personal") {
+      if (idU === "NAV_NEXT") {
         s.pageIdx = (s.pageIdx || 0) + 1;
         setS(from, s);
-        await pedirResponsable(from, s.area, s.pageIdx);
+        await pedirCategoria(from);
         return res.sendStatus(200);
       }
-      if (idU === "NAV_PREV" && s.etapa === "ask_personal") {
+      if (idU === "NAV_PREV") {
         s.pageIdx = Math.max(0, (s.pageIdx || 0) - 1);
-        setS(from, s);
-        await pedirResponsable(from, s.area, s.pageIdx);
-        return res.sendStatus(200);
-      }
-
-      if (idU === "AREA_HORTIFRUT" || idU === "AREA_AGROINDUSTRIA") {
-        s.area = idU.replace("AREA_", "");
-        s.etapa = "ask_personal";
-        s.pageIdx = 0;
-        setS(from, s);
-        await pedirResponsable(from, s.area, s.pageIdx);
-        return res.sendStatus(200);
-      }
-
-      if (idU.startsWith("EMP_") && s.etapa === "ask_personal" && s.area) {
-        const idx = Number(idU.replace("EMP_", "")) || 0;
-        const names = AREAS[s.area] || [];
-        const nombre = names[idx] || names[0] || "Responsable";
-        s.empleado = await ensureEmployeeSheet(nombre);
-        s.lastKm = await lastKm(s.empleado); // precargar
-        await toText(from, `Responsable seleccionado: *${nombre}*`);
-        s.etapa = "ask_categoria";
         setS(from, s);
         await pedirCategoria(from);
         return res.sendStatus(200);
@@ -288,7 +256,10 @@ router.post("/wa/webhook", async (req, res) => {
       }
 
       if (idU === "RESUMEN") {
-        if (!s.empleado) { s.etapa = "ask_area"; setS(from, s); await pedirArea(from); return res.sendStatus(200); }
+        if (!s.empleado) {
+          await toText(from, "No se identificó una hoja activa. Vuelve a escribir “inicio”.");
+          return res.sendStatus(200);
+        }
         const txt = await todaySummary(s.empleado);
         await toText(from, txt);
         await pedirCategoria(from);
@@ -298,48 +269,15 @@ router.post("/wa/webhook", async (req, res) => {
       return res.sendStatus(200);
     }
 
-    /* =================== TEXTO =================== */
     if (msg.type === "text") {
       const text = (msg.text?.body || "").trim();
 
       if (/^(menu|inicio)$/i.test(text)) {
-        s.etapa = "ask_area";
-        s.area = null;
-        s.empleado = null;
+        s.etapa = "ask_categoria";
         s.pageIdx = 0;
         s.flow = null;
-        s.lastKm = null;
         setS(from, s);
-        await pedirArea(from);
-        return res.sendStatus(200);
-      }
-
-      if (s.etapa === "ask_area") {
-        if (/hortifrut/i.test(text)) {
-          s.area = "HORTIFRUT"; s.etapa = "ask_personal"; s.pageIdx = 0; setS(from, s);
-          await pedirResponsable(from, s.area, s.pageIdx); return res.sendStatus(200);
-        }
-        if (/agroindustria/i.test(text)) {
-          s.area = "AGROINDUSTRIA"; s.etapa = "ask_personal"; s.pageIdx = 0; setS(from, s);
-          await pedirResponsable(from, s.area, s.pageIdx); return res.sendStatus(200);
-        }
-        await pedirArea(from); return res.sendStatus(200);
-      }
-
-      if (s.etapa === "ask_personal" && s.area) {
-        const names = (AREAS[s.area] || []);
-        const pickIdx = names.findIndex((n) => n.toLowerCase().includes(text.toLowerCase()));
-        if (pickIdx >= 0) {
-          const nombre = names[pickIdx];
-          s.empleado = await ensureEmployeeSheet(nombre);
-          s.lastKm = await lastKm(s.empleado);
-          await toText(from, `Responsable seleccionado: *${nombre}*`);
-          s.etapa = "ask_categoria";
-          setS(from, s);
-          await pedirCategoria(from);
-          return res.sendStatus(200);
-        }
-        await pedirResponsable(from, s.area, s.pageIdx);
+        await pedirCategoria(from);
         return res.sendStatus(200);
       }
 
@@ -354,7 +292,6 @@ router.post("/wa/webhook", async (req, res) => {
         return res.sendStatus(200);
       }
 
-      // Recolección de pasos
       if (s.etapa === "flow_step" && s.flow) {
         const step = s.flow.steps[s.flow.i];
         const k = step.key;
@@ -389,7 +326,13 @@ router.post("/wa/webhook", async (req, res) => {
         }
 
         // Fin de flujo → guardar fila
-        if (!s.empleado) { s.etapa = "ask_area"; s.flow = null; setS(from, s); await pedirArea(from); return res.sendStatus(200); }
+        if (!s.empleado) {
+          await toText(from, "No se identificó una hoja activa. Vuelve a escribir “inicio”.");
+          s.etapa = "ask_categoria";
+          s.flow = null;
+          setS(from, s);
+          return res.sendStatus(200);
+        }
 
         const { categoria, lugar = "", detalle = "", km = undefined, factura = "", monto = 0 } = s.flow.data;
         const saved = await appendExpenseRow(s.empleado, { categoria, lugar, detalle, km, factura, monto });
@@ -421,7 +364,10 @@ router.post("/wa/webhook", async (req, res) => {
       }
 
       if (/^resumen$/i.test(text)) {
-        if (!s.empleado) { s.etapa = "ask_area"; setS(from, s); await pedirArea(from); return res.sendStatus(200); }
+        if (!s.empleado) {
+          await toText(from, "No se identificó una hoja activa. Vuelve a escribir “inicio”.");
+          return res.sendStatus(200);
+        }
         const txt = await todaySummary(s.empleado);
         await toText(from, txt);
         await pedirCategoria(from);
