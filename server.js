@@ -5,22 +5,23 @@ import multer from 'multer';
 import { fileURLToPath } from 'url';
 
 // Routers existentes
-import waRouter from './wa.js';
 import messengerRouter from './index.js';
 import pricesRouter from './prices.js';
+import waRouter from './wa.js';
+import vendorsRouter from './wa.vendedores.js'; // ← nuevo front para vendedores
 
-// ========= Sheets =========
+// ========= Sheets (para /api/catalog y el inbox) =========
 import {
   summariesLastNDays,
   historyForIdLastNDays,
   appendMessage,
-  readPrices, writePrices, readRate, writeRate,
+  readPrices
 } from './sheets.js';
 
 const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
-app.use(express.json({ limit: '2mb' }));
+app.use(express.json({ limit: '5mb' }));
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
@@ -42,12 +43,17 @@ app.get('/privacidad', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'privacidad.html'));
 });
 
-// Routers
-app.use(messengerRouter);
-app.use(waRouter);
-app.use(pricesRouter);
+/* ================== MONTAJE DE ROUTERS ==================
+   Importante: vendorsRouter VA ANTES de waRouter, porque ambos
+   escuchan /wa/webhook y el de vendedores debe interceptar
+   a los números definidos en ENV.
+========================================================= */
+app.use(vendorsRouter);   // ← intercepta vendedores y delega
+app.use(messengerRouter); // FB Messenger (GET/POST /webhook)
+app.use(waRouter);        // WhatsApp general (GET/POST /wa/webhook)
+app.use(pricesRouter);    // /api/prices (si lo tienes en prices.js)
 
-// Catálogo desde Hoja de Precios
+// ========= Catálogo desde Sheet de Precios =========
 app.get('/api/catalog', async (_req, res) => {
   try {
     const { prices = [], rate = 6.96 } = await readPrices();
@@ -86,9 +92,7 @@ app.get('/api/catalog', async (_req, res) => {
       byProduct.set(producto, cur);
     }
 
-    const items = [...byProduct.values()]
-      .sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'));
-
+    const items = [...byProduct.values()].sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'));
     res.json({ ok:true, rate, items, count: items.length, source:'sheet:PRECIOS' });
   } catch (e) {
     console.error('[catalog] from prices error:', e);
@@ -237,6 +241,7 @@ app.post('/wa/agent/handoff', auth, (req, res) => {
   res.json({ ok:true });
 });
 
+// Subida “falsa” para registrar media en Sheets (igual que tu versión)
 const upload = multer({ storage: multer.memoryStorage() });
 app.post('/wa/agent/send-media', auth, upload.array('files'), async (req, res) => {
   const { to, caption = '' } = req.body || {};
@@ -270,19 +275,18 @@ app.post('/wa/agent/send-media', auth, upload.array('files'), async (req, res) =
   }
 });
 
-// ==== Campaña automática por mes (configurable por ENV) ====
-const CAMP_VERANO_MONTHS = (process.env.CAMPANA_VERANO_MONTHS || '10,11,12,1,2,3') // Oct–Mar
+// ==== Campaña automática por mes (si lo usas en otras partes) ====
+const CAMP_VERANO_MONTHS = (process.env.CAMPANA_VERANO_MONTHS || '10,11,12,1,2,3')
   .split(',').map(n => +n.trim()).filter(Boolean);
-const CAMP_INVIERNO_MONTHS = (process.env.CAMPANA_INVIERNO_MONTHS || '4,5,6,7,8,9') // Abr–Sep
+const CAMP_INVIERNO_MONTHS = (process.env.CAMPANA_INVIERNO_MONTHS || '4,5,6,7,8,9')
   .split(',').map(n => +n.trim()).filter(Boolean);
-
 function monthInTZ(tz = TZ){
   try{
     const parts = new Intl.DateTimeFormat('en-GB', { timeZone: tz, month:'2-digit' })
       .formatToParts(new Date());
     return +parts.find(p => p.type === 'month').value;
   }catch{
-    return (new Date()).getMonth() + 1; // 1..12
+    return (new Date()).getMonth() + 1;
   }
 }
 function currentCampana(){
@@ -295,10 +299,10 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Server escuchando en :${PORT}`);
   console.log('   • Messenger:        GET/POST /webhook');
-  console.log('   • WhatsApp:         GET/POST /wa/webhook');
+  console.log('   • WhatsApp:         GET/POST /wa/webhook (con front de vendedores)');
   console.log('   • Inbox UI:         GET       /inbox');
   console.log('   • Inbox API:        /wa/agent/* (convos, history, send, read, handoff, send-media, import-whatsapp, stream)');
-  console.log('   • Prices JSON:      GET       /api/prices');
-  console.log('   • Catalog JSON:     GET       /api/catalog   (desde Hoja PRECIOS)');
+  console.log('   • Prices JSON:      GET       /api/prices (pricesRouter)');
+  console.log('   • Catalog JSON:     GET       /api/catalog (desde Hoja PRECIOS)');
   console.log('   • Health:           GET       /healthz');
 });
