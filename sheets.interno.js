@@ -20,7 +20,7 @@ export async function getSheets() {
     });
   } else {
     throw new Error(
-      "No hay credenciales de Google. Define GOOGLE_CREDENTIALS_JSON o GOOGLE_APPLICATION_CREDENTIALS."
+      "No hay credenciales de Google. Define GOOGLE_CREDENTIALS_JSON2 o GOOGLE_APPLICATION_CREDENTIALS."
     );
   }
   const client = await auth.getClient();
@@ -46,9 +46,7 @@ export function nowDisplay() {
     return `${get("year")}-${get("month")}-${get("day")} ${get("hour")}:${get("minute")}`;
   } catch {
     const d = new Date();
-    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(
-      d.getHours()
-    )}:${pad2(d.getMinutes())}`;
+    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
   }
 }
 
@@ -80,6 +78,11 @@ export const HEADERS = [
   "total_dia_bs",
 ];
 
+// ───────────────────────────────────────────────────────────
+// A1 helper: comilla simple y escapa ' → '' para nombres de hoja
+const a1 = (sheetName) => `'${String(sheetName).replace(/'/g, "''")}'`;
+// ───────────────────────────────────────────────────────────
+
 function canonSheetName(name = "") {
   return String(name || "Empleado").trim().slice(0, 99);
 }
@@ -93,7 +96,7 @@ function num(x) {
 export async function ensureEmployeeSheet(empleadoNombre) {
   const sheets = await getSheets();
   const spreadsheetId = process.env.SHEETS_SPREADSHEET_ID2;
-  if (!spreadsheetId) throw new Error("Falta SHEETS_SPREADSHEET_ID");
+  if (!spreadsheetId) throw new Error("Falta SHEETS_SPREADSHEET_ID2");
   const title = canonSheetName(empleadoNombre);
 
   const meta = await sheets.spreadsheets.get({ spreadsheetId });
@@ -106,20 +109,20 @@ export async function ensureEmployeeSheet(empleadoNombre) {
     });
     await sheets.spreadsheets.values.update({
       spreadsheetId,
-      range: `${title}!A1:I1`,
+      range: `${a1(title)}!A1:I1`,
       valueInputOption: "RAW",
       requestBody: { values: [HEADERS] },
     });
   } else {
     const r = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: `${title}!A1:I1`,
+      range: `${a1(title)}!A1:I1`,
     });
     const h = r.data.values?.[0] || [];
     if (h.length < HEADERS.length) {
       await sheets.spreadsheets.values.update({
         spreadsheetId,
-        range: `${title}!A1:I1`,
+        range: `${a1(title)}!A1:I1`,
         valueInputOption: "RAW",
         requestBody: { values: [HEADERS] },
       });
@@ -130,10 +133,10 @@ export async function ensureEmployeeSheet(empleadoNombre) {
 
 async function getNextId(hoja) {
   const sheets = await getSheets();
-  const spreadsheetId = process.env.SHEETS_SPREADSHEET_ID;
+  const spreadsheetId = process.env.SHEETS_SPREADSHEET_ID2;
   const r = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `${hoja}!A:A`,
+    range: `${a1(hoja)}!A:A`,
   });
   const rows = r.data.values || [];
   if (rows.length <= 1) return 1;
@@ -147,10 +150,10 @@ async function getNextId(hoja) {
 /** KM anterior no vacío (último de la hoja) */
 export async function lastKm(hoja) {
   const sheets = await getSheets();
-  const spreadsheetId = process.env.SHEETS_SPREADSHEET_ID;
+  const spreadsheetId = process.env.SHEETS_SPREADSHEET_ID2;
   const r = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `${hoja}!A2:I100000`,
+    range: `${a1(hoja)}!A2:I100000`,
   });
   const rows = r.data.values || [];
   for (let i = rows.length - 1; i >= 0; i--) {
@@ -167,12 +170,12 @@ export async function appendExpenseRow(
   { categoria, lugar = "", detalle = "", km = undefined, factura = "", monto = 0 }
 ) {
   const sheets = await getSheets();
-  const spreadsheetId = process.env.SHEETS_SPREADSHEET_ID;
+  const spreadsheetId = process.env.SHEETS_SPREADSHEET_ID2;
   const today = todayISODate();
 
   const r = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `${hoja}!A2:I100000`,
+    range: `${a1(hoja)}!A2:I100000`,
   });
   const rows = r.data.values || [];
 
@@ -184,7 +187,7 @@ export async function appendExpenseRow(
   if (lastDate && lastDate !== today) {
     await sheets.spreadsheets.values.append({
       spreadsheetId,
-      range: `${hoja}!A1`,
+      range: `${a1(hoja)}!A1`,
       valueInputOption: "RAW",
       insertDataOption: "INSERT_ROWS",
       requestBody: { values: [["", "", "", "", "", "", "", "", ""]] },
@@ -213,7 +216,7 @@ export async function appendExpenseRow(
     String(categoria || "").toLowerCase(),
     lugar,
     detalle,
-    kmOut,            // ← ahora puede quedar "" (vacío)
+    kmOut,            // puede quedar "" (vacío)
     factura,
     montoN || 0,
     totalDia,
@@ -221,7 +224,7 @@ export async function appendExpenseRow(
 
   await sheets.spreadsheets.values.append({
     spreadsheetId,
-    range: `${hoja}!A1`,
+    range: `${a1(hoja)}!A1`,
     valueInputOption: "RAW",
     insertDataOption: "INSERT_ROWS",
     requestBody: { values: [out] },
@@ -232,11 +235,11 @@ export async function appendExpenseRow(
 
 export async function todayTotalFor(hoja) {
   const sheets = await getSheets();
-  const spreadsheetId = process.env.SHEETS_SPREADSHEET_ID;
+  const spreadsheetId = process.env.SHEETS_SPREADSHEET_ID2;
   const today = todayISODate();
   const r = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `${hoja}!A2:I100000`,
+    range: `${a1(hoja)}!A2:I100000`,
   });
   const rows = r.data.values || [];
   return rows
@@ -246,11 +249,11 @@ export async function todayTotalFor(hoja) {
 
 export async function todaySummary(hoja) {
   const sheets = await getSheets();
-  const spreadsheetId = process.env.SHEETS_SPREADSHEET_ID;
+  const spreadsheetId = process.env.SHEETS_SPREADSHEET_ID2;
   const today = todayISODate();
   const r = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `${hoja}!A2:I100000`,
+    range: `${a1(hoja)}!A2:I100000`,
   });
   const rows = r.data.values || [];
   const todays = rows.filter((rw) => String(rw?.[1] || "").slice(0, 10) === today);
