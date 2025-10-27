@@ -1155,20 +1155,22 @@ if (flowActive && msg.type === 'text') {
 }
 
 
-    if (parsedCart && !isAdvisor(fromId)) {
-      const s0 = S(fromId);
-      s0.vars.cart = parsedCart.items || [];
-      s0.pending = null;
-      s0.lastPrompt = null;
-      s0.stage = 'checkout';
-      persistS(fromId);
-      await toText(fromId, summaryText(s0));
-      await toButtons(fromId, '¿Listo para *cotizar*?', [
-        { title:'Cotizar', payload:'QR_FINALIZAR' }
-      ]);
-      res.sendStatus(200);
-      return;
-    }
+if (parsedCart && !isAdvisor(fromId) && !advFlow(fromId)) {
+  const s0 = S(fromId);
+  s0.vars.cart = parsedCart.items || [];
+  s0.pending = null;
+  s0.lastPrompt = null;
+  s0.stage = 'checkout';
+  persistS(fromId);
+
+  await toText(fromId, summaryText(s0));
+  await toButtons(fromId, '¿Listo para *cotizar*?', [
+    { title:'Cotizar', payload:'QR_FINALIZAR' }
+  ]);
+
+  res.sendStatus(200);
+  return;
+}
 
     try {
       if (!s.meta) s.meta = {};
@@ -1400,31 +1402,32 @@ if (flowActive && msg.type === 'text') {
             if (okTxt) console.log('[ADVISOR] alerta enviada a', advisor);
             else console.warn('[ADVISOR] no se pudo enviar alerta a', advisor);
           }
-          try {
-          const safeName = (s.profileName || String(fromId))
-            .replace(/[^\w\s\-.]/g, '')
-            .replace(/\s+/g, '_');
+try {
+  const safeName = (s.profileName || String(fromId))
+    .replace(/[^\w\s\-.]/g, '')
+    .replace(/\s+/g, '_');
 
-          const filename = pdfInfo?.filename || `Cotizacion_${safeName}.pdf`;
-          const caption  = `Cotización — ${s.profileName || fromId}`;
-          const mediaId = await waUploadPDFSmart(pdfInfo, filename);
+  const filename = pdfInfo?.filename || `Cotizacion_${safeName}.pdf`;
+  const caption  = `Cotización — ${s.profileName || fromId}`;
+  const mediaId  = await waUploadPDFSmart(pdfInfo, filename);
 
-          if (mediaId) {
-            for (const advisor of ADVISOR_WA_NUMBERS) {
-              const okDoc = await waSendQ(advisor, {
-                messaging_product: 'whatsapp',
-                to: advisor,
-                type: 'document',
-                document: { id, filename, caption }
-              });
-              if (!okDoc) console.warn('[ADVISOR] PDF no enviado a', advisor);
-            }
-          } else {
-            console.warn('[ADVISOR] No se obtuvo mediaId ni path del PDF para reenviar al asesor.');
-          }
-        } catch (err) {
-          console.error('[ADVISOR] error al reenviar PDF:', err);
-        }
+  if (mediaId) {
+    for (const advisor of ADVISOR_WA_NUMBERS) {
+      const okDoc = await waSendQ(advisor, {
+        messaging_product: 'whatsapp',
+        to: advisor,
+        type: 'document',
+        document: { id: mediaId, filename, caption } // ← aquí va mediaId
+      });
+      if (!okDoc) console.warn('[ADVISOR] PDF no enviado a', advisor);
+    }
+  } else {
+    console.warn('[ADVISOR] No se obtuvo mediaId ni path del PDF para reenviar al asesor.');
+  }
+} catch (err) {
+  console.error('[ADVISOR] error al reenviar PDF:', err);
+}
+
 
         }
         humanOn(fromId, 4);
