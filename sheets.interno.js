@@ -6,7 +6,7 @@ let _sheets;
 export async function getSheets() {
   if (_sheets) return _sheets;
   let auth;
-  const raw = process.env.GOOGLE_CREDENTIALS_JSON;
+  const raw = process.env.GOOGLE_CREDENTIALS_JSON2;
   if (raw && raw.trim()) {
     const creds = JSON.parse(raw);
     auth = new google.auth.GoogleAuth({
@@ -68,17 +68,6 @@ export function todayISODate() {
   }
 }
 
-/**
- * A  id
- * B  fecha (YYYY-MM-DD HH:mm)
- * C  categoria
- * D  lugar
- * E  detalle
- * F  km
- * G  factura
- * H  monto_bs
- * I  total_dia_bs (acumulado)
- */
 export const HEADERS = [
   "id",
   "fecha",
@@ -103,7 +92,7 @@ function num(x) {
 
 export async function ensureEmployeeSheet(empleadoNombre) {
   const sheets = await getSheets();
-  const spreadsheetId = process.env.SHEETS_SPREADSHEET_ID;
+  const spreadsheetId = process.env.SHEETS_SPREADSHEET_ID2;
   if (!spreadsheetId) throw new Error("Falta SHEETS_SPREADSHEET_ID");
   const title = canonSheetName(empleadoNombre);
 
