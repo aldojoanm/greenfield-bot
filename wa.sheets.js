@@ -1,3 +1,4 @@
+// wa.sheets.js
 import express from "express";
 import {
   ensureEmployeeSheet,
@@ -10,17 +11,16 @@ import {
 const router = express.Router();
 
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || "VERIFY_123";
-const WA_TOKEN = process.env.WHATSAPP_TOKEN || "";
-const WA_PHONE_ID = process.env.WHATSAPP_PHONE_ID || "";
-const DEBUG = process.env.DEBUG_LOGS === "1";
+const WA_TOKEN     = process.env.WHATSAPP_TOKEN || "";
+const WA_PHONE_ID  = process.env.WHATSAPP_PHONE_ID || "";
+const DEBUG        = process.env.DEBUG_LOGS === "1";
 const log = (...a) => console.log("[WA]", ...a);
 const dbg = (...a) => { if (DEBUG) console.log("[DBG]", ...a); };
 
+/* ============ vendors (para saber si saludar o no) ============ */
 function parseVendorsFromEnv() {
   const byJson = process.env.WHATSAPP_VENDOR_CONTACTS || "";
-  if (byJson.trim()) {
-    try { return JSON.parse(byJson); } catch { /* fallthrough */ }
-  }
+  if (byJson.trim()) { try { return JSON.parse(byJson); } catch {} }
   const byCsv = process.env.WHATSAPP_VENDOR_CONTACTS_CSV || "";
   if (byCsv.trim()) {
     const map = {};
@@ -36,6 +36,7 @@ function parseVendorsFromEnv() {
 const VENDORS = parseVendorsFromEnv();
 const vendorNameOf = (waId="") => VENDORS[String(waId).replace(/[^\d]/g,"")] || null;
 
+/* ===================== Estado ===================== */
 const S = new Map();
 const getS = (id) => {
   if (!S.has(id)) S.set(id, {
@@ -50,6 +51,7 @@ const getS = (id) => {
 };
 const setS = (id, v) => S.set(id, v);
 
+/* ===================== WhatsApp ===================== */
 async function waSendQ(to, payload) {
   const url = `https://graph.facebook.com/v20.0/${WA_PHONE_ID}/messages`;
   dbg("SEND", { to, type: payload.type || payload?.interactive?.type });
@@ -67,7 +69,6 @@ const clamp = (t, n = 24) => (String(t).length <= n ? String(t) : String(t).slic
 const toText = (to, body) =>
   waSendQ(to, { messaging_product: "whatsapp", to, type: "text", text: { body: String(body).slice(0, 4096), preview_url: false } });
 
-/** Botones (máx 3) */
 const toButtons = (to, body, buttons = []) =>
   waSendQ(to, {
     messaging_product: "whatsapp",
@@ -113,6 +114,7 @@ async function toPagedList(to, { body, buttonTitle, rows, pageIdx, title }) {
   });
 }
 
+/* ===================== Flujo gastos ===================== */
 const CATS = ["combustible", "alimentacion", "hospedaje", "peajes", "aceites", "llantas", "frenos", "otros"];
 
 async function pedirCategoria(to) {
@@ -145,7 +147,6 @@ function buildFlow(categoria) {
       { key: "monto",   prompt: "💵 Monto en Bs (ej.: 250.00)." },
     ];
   }
-
   return [
     { key: "detalle", prompt: "📝 Describe brevemente el gasto." },
     { key: "factura", prompt: "🧾 Número de factura/recibo (o “ninguno”)." },
@@ -172,43 +173,43 @@ async function askCurrentStep(to, s) {
   }
 }
 
+/* ===================== Verify (GET) ===================== */
 router.get("/wa/webhook", (req, res) => {
-  const mode = req.query["hub.mode"];
+  const mode  = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
   const chall = req.query["hub.challenge"];
   if (mode === "subscribe" && token === VERIFY_TOKEN) return res.status(200).send(String(chall || ""));
   return res.sendStatus(403);
 });
 
+/* ===================== Webhook (POST) ===================== */
 router.post("/wa/webhook", async (req, res) => {
   try {
     if (DEBUG) log("BODY", JSON.stringify(req.body));
-    const entry = req.body?.entry?.[0];
+    const entry  = req.body?.entry?.[0];
     const change = entry?.changes?.[0];
-    const value = change?.value;
-    const msg = value?.messages?.[0];
+    const value  = change?.value;
+    const msg    = value?.messages?.[0];
     if (!msg) return res.sendStatus(200);
 
     const from = (msg.from || "").replace(/[^\d]/g,"");
     const s = getS(from);
     dbg("IN", { from, type: msg.type, etapa: s.etapa, empleado: s.empleado });
 
+    /* ========== Primer mensaje en módulo de gastos ========== */
     if (!s.greeted) {
       s.greeted = true;
 
+      // Si es vendedor conocido → NO volver a saludar (para no duplicar lo del HUB)
       const officialName = vendorNameOf(from);
-      let hoja = null;
-      if (officialName) {
-        hoja = await ensureEmployeeSheet(officialName);
-        s.empleado = hoja;
-        s.lastKm = await lastKm(s.empleado);
-        await toText(from, `Hola *${officialName}*, soy el asistente de Greenfield. Registraré tus gastos por categoría.`);
-      } else {
-        const fallback = `GENÉRICO – ${from}`;
-        hoja = await ensureEmployeeSheet(fallback);
-        s.empleado = hoja;
-        s.lastKm = await lastKm(s.empleado);
-        await toText(from, `Hola, tu número *${from}* no está en la lista oficial de vendedores.\nRegistraré en la hoja: *${fallback}*.\n(Pídele al admin que te agregue en WHATSAPP_VENDOR_CONTACTS para mostrar tu nombre oficial.)`);
+      const hojaName = officialName ? officialName : `GENÉRICO – ${from}`;
+      const hoja = await ensureEmployeeSheet(hojaName);
+      s.empleado = hoja;
+      s.lastKm   = await lastKm(s.empleado);
+
+      // Solo saludo si NO es vendedor (flujo público)
+      if (!officialName) {
+        await toText(from, `Hola, tu número *${from}* no está en la lista oficial de vendedores.\nRegistraré en la hoja: *${hojaName}*.\n(Pídele al admin que te agregue en WHATSAPP_VENDOR_CONTACTS).`);
       }
 
       s.etapa = "ask_categoria";
@@ -218,6 +219,7 @@ router.post("/wa/webhook", async (req, res) => {
       return res.sendStatus(200);
     }
 
+    /* =================== INTERACTIVO =================== */
     if (msg.type === "interactive") {
       const br = msg.interactive?.button_reply;
       const lr = msg.interactive?.list_reply;
@@ -226,40 +228,27 @@ router.post("/wa/webhook", async (req, res) => {
       dbg("INTERACTIVE", idU, "ETAPA", s.etapa);
 
       if (idU === "NAV_NEXT") {
-        s.pageIdx = (s.pageIdx || 0) + 1;
-        setS(from, s);
-        await pedirCategoria(from);
-        return res.sendStatus(200);
+        s.pageIdx = (s.pageIdx || 0) + 1; setS(from, s); await pedirCategoria(from); return res.sendStatus(200);
       }
       if (idU === "NAV_PREV") {
-        s.pageIdx = Math.max(0, (s.pageIdx || 0) - 1);
-        setS(from, s);
-        await pedirCategoria(from);
-        return res.sendStatus(200);
+        s.pageIdx = Math.max(0, (s.pageIdx || 0) - 1); setS(from, s); await pedirCategoria(from); return res.sendStatus(200);
       }
 
       if (idU.startsWith("CAT_")) {
         const categoria = id.replace("CAT_", "").toLowerCase();
         s.flow = { categoria, steps: buildFlow(categoria), data: { categoria }, i: 0 };
-        s.etapa = "flow_step";
-        setS(from, s);
+        s.etapa = "flow_step"; setS(from, s);
         await toText(from, `Categoría: *${categoria[0].toUpperCase() + categoria.slice(1)}*`);
         await askCurrentStep(from, s);
         return res.sendStatus(200);
       }
 
       if (idU === "SEGUIR") {
-        s.etapa = "ask_categoria";
-        setS(from, s);
-        await pedirCategoria(from);
-        return res.sendStatus(200);
+        s.etapa = "ask_categoria"; setS(from, s); await pedirCategoria(from); return res.sendStatus(200);
       }
 
       if (idU === "RESUMEN") {
-        if (!s.empleado) {
-          await toText(from, "No se identificó una hoja activa. Vuelve a escribir “inicio”.");
-          return res.sendStatus(200);
-        }
+        if (!s.empleado) { await toText(from, "No se identificó una hoja activa. Escribe “inicio”."); return res.sendStatus(200); }
         const txt = await todaySummary(s.empleado);
         await toText(from, txt);
         await pedirCategoria(from);
@@ -269,14 +258,12 @@ router.post("/wa/webhook", async (req, res) => {
       return res.sendStatus(200);
     }
 
+    /* =================== TEXTO =================== */
     if (msg.type === "text") {
       const text = (msg.text?.body || "").trim();
 
       if (/^(menu|inicio)$/i.test(text)) {
-        s.etapa = "ask_categoria";
-        s.pageIdx = 0;
-        s.flow = null;
-        setS(from, s);
+        s.etapa = "ask_categoria"; s.pageIdx = 0; s.flow = null; setS(from, s);
         await pedirCategoria(from);
         return res.sendStatus(200);
       }
@@ -285,8 +272,7 @@ router.post("/wa/webhook", async (req, res) => {
         const hit = CATS.find((c) => text.toLowerCase().includes(c));
         if (!hit) { await pedirCategoria(from); return res.sendStatus(200); }
         s.flow = { categoria: hit, steps: buildFlow(hit), data: { categoria: hit }, i: 0 };
-        s.etapa = "flow_step";
-        setS(from, s);
+        s.etapa = "flow_step"; setS(from, s);
         await toText(from, `Categoría: *${hit[0].toUpperCase() + hit.slice(1)}*`);
         await askCurrentStep(from, s);
         return res.sendStatus(200);
@@ -304,7 +290,6 @@ router.post("/wa/webhook", async (req, res) => {
             return res.sendStatus(200);
           }
           if (k === "km") {
-            // Validación contra último km
             const prev = s.lastKm ?? (s.empleado ? await lastKm(s.empleado) : null);
             s.lastKm = prev;
             if (prev != null && n < prev) {
@@ -314,7 +299,7 @@ router.post("/wa/webhook", async (req, res) => {
           }
           val = n;
         }
-        if (k === "factura" && /^ninguno$/i.test(text)) val = "";
+        if (k === "factura" && /^ninguno?$/i.test(text)) val = "";
 
         s.flow.data[k] = val;
         s.flow.i += 1;
@@ -325,17 +310,14 @@ router.post("/wa/webhook", async (req, res) => {
           return res.sendStatus(200);
         }
 
-        // Fin de flujo → guardar fila
         if (!s.empleado) {
-          await toText(from, "No se identificó una hoja activa. Vuelve a escribir “inicio”.");
-          s.etapa = "ask_categoria";
-          s.flow = null;
-          setS(from, s);
+          await toText(from, "No se identificó una hoja activa. Escribe “inicio”.");
+          s.etapa = "ask_categoria"; s.flow = null; setS(from, s);
           return res.sendStatus(200);
         }
 
         const { categoria, lugar = "", detalle = "", km = undefined, factura = "", monto = 0 } = s.flow.data;
-        const saved = await appendExpenseRow(s.empleado, { categoria, lugar, detalle, km, factura, monto });
+        const saved    = await appendExpenseRow(s.empleado, { categoria, lugar, detalle, km, factura, monto });
         const totalHoy = await todayTotalFor(s.empleado);
 
         const prettyCat = categoria[0].toUpperCase() + categoria.slice(1);
@@ -357,17 +339,14 @@ router.post("/wa/webhook", async (req, res) => {
         s.flow = null;
         setS(from, s);
         await toButtons(from, "¿Deseas registrar algo más?", [
-          { title: "Sí, seguir", payload: "SEGUIR" },
+          { title: "Sí, seguir",  payload: "SEGUIR"  },
           { title: "Ver resumen", payload: "RESUMEN" },
         ]);
         return res.sendStatus(200);
       }
 
       if (/^resumen$/i.test(text)) {
-        if (!s.empleado) {
-          await toText(from, "No se identificó una hoja activa. Vuelve a escribir “inicio”.");
-          return res.sendStatus(200);
-        }
+        if (!s.empleado) { await toText(from, "No se identificó una hoja activa. Escribe “inicio”."); return res.sendStatus(200); }
         const txt = await todaySummary(s.empleado);
         await toText(from, txt);
         await pedirCategoria(from);
@@ -379,7 +358,7 @@ router.post("/wa/webhook", async (req, res) => {
 
     res.sendStatus(200);
   } catch (e) {
-    console.error("Webhook error:", e);
+    console.error("[WA SHEETS] webhook error:", e);
     res.sendStatus(500);
   }
 });

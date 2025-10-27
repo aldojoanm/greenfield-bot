@@ -1,18 +1,21 @@
+// vendors.hub.js
 import express from "express";
-import advisorRouter from "./wa.js";
-import sheetsRouter from "./wa.sheets.js";
+import advisorRouter from "./wa.js";        // asesor/cotización (cliente y asesor)
+import sheetsRouter from "./wa.sheets.js";  // registro de gastos
 
 const router = express.Router();
 
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || "VERIFY_123";
-const WA_TOKEN = process.env.WHATSAPP_TOKEN || "";
-const WA_PHONE_ID = process.env.WHATSAPP_PHONE_ID || "";
-const DEBUG = process.env.DEBUG_LOGS === "1";
-const dbg = (...a) => { if (DEBUG) console.log("[VENDORS]", ...a); };
+const WA_TOKEN     = process.env.WHATSAPP_TOKEN || "";
+const WA_PHONE_ID  = process.env.WHATSAPP_PHONE_ID || "";
+const DEBUG        = process.env.DEBUG_LOGS === "1";
+const dbg = (...a) => { if (DEBUG) console.log("[HUB]", ...a); };
 
+/* ================== Mapa de Vendedores ================== */
 function parseVendorsFromEnv() {
   const byJson = process.env.WHATSAPP_VENDOR_CONTACTS || "";
-  if (byJson.trim()) { try { return JSON.parse(byJson); } catch {} }
+  if (byJson.trim()) { try { return JSON.parse(byJson); } catch {}
+  }
   const byCsv = process.env.WHATSAPP_VENDOR_CONTACTS_CSV || "";
   if (byCsv.trim()) {
     const map = {};
@@ -28,10 +31,15 @@ function parseVendorsFromEnv() {
 const VENDORS = parseVendorsFromEnv();
 const vendorNameOf = (waId="") => VENDORS[String(waId).replace(/[^\d]/g,"")] || null;
 
-const STATE = new Map();
-const getS = (id) => { if (!STATE.has(id)) STATE.set(id, { greeted:false, mode:null }); return STATE.get(id); };
+/* ================== Estado del HUB ================== */
+const STATE = new Map(); // by fromId
+const getS = (id) => {
+  if (!STATE.has(id)) STATE.set(id, { greeted:false, mode:null });
+  return STATE.get(id);
+};
 const setS = (id, v) => STATE.set(id, v);
 
+/* ================ Util: envío WA ==================== */
 async function waSendQ(to, payload) {
   const url = `https://graph.facebook.com/v20.0/${WA_PHONE_ID}/messages`;
   if (DEBUG) dbg("SEND", { to, type: payload.type || payload?.interactive?.type });
@@ -45,9 +53,6 @@ async function waSendQ(to, payload) {
     console.error("[WA SEND ERROR]", r.status, t);
   }
 }
-const toText = (to, body) =>
-  waSendQ(to, { messaging_product: "whatsapp", to, type: "text", text: { body: String(body).slice(0, 4096), preview_url: false } });
-
 const clamp = (t, n = 20) => (String(t).length <= n ? String(t) : String(t).slice(0, n - 1) + "…");
 const toButtons = (to, body, buttons = []) =>
   waSendQ(to, {
@@ -67,47 +72,61 @@ const toButtons = (to, body, buttons = []) =>
   });
 
 async function showVendorMenu(to, name) {
-  const saludo = `Hola ${name}, soy el asistente de *Greenfield*.\n¿En qué te puedo ayudar?`;
+  // menú breve, sin repetir nombre en sub-routers
+  const saludo = `Hola ${name}. ¿En qué te puedo ayudar?`;
   await toButtons(to, saludo, [
     { title: "Realizar cotización", payload: "V_MENU_QUOTE" },
-    { title: "Registrar gastos", payload: "V_MENU_EXP" },
+    { title: "Registrar gastos",   payload: "V_MENU_EXP"   },
   ]);
 }
 
 async function showBackToMenu(to) {
-  await toButtons(to, "Si deseas algo más, aquí estoy 👇", [
+  await toButtons(to, "¿Necesitas algo más?", [
     { title: "Menú principal", payload: "V_MENU_BACK" },
   ]);
 }
 
+/* ================ De-duplicación de mensajes ================ */
 const processed = new Map();
 const PROCESSED_TTL = 5 * 60 * 1000;
-setInterval(() => { const now = Date.now(); for (const [k, ts] of processed) if (now - ts > PROCESSED_TTL) processed.delete(k); }, 60000);
-const seenWamid = (id) => { if (!id) return false; const now = Date.now(); const last = processed.get(id) || 0; processed.set(id, now); return (now - last) < PROCESSED_TTL; };
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, ts] of processed) if (now - ts > PROCESSED_TTL) processed.delete(k);
+}, 60000);
+const seenWamid = (id) => {
+  if (!id) return false;
+  const now = Date.now();
+  const last = processed.get(id) || 0;
+  processed.set(id, now);
+  return (now - last) < PROCESSED_TTL;
+};
 
+/* ================ Webhook verify (GET) ================ */
 router.get("/wa/webhook", (req, res, next) => {
-  const mode = req.query["hub.mode"];
+  const mode  = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
   const chall = req.query["hub.challenge"];
   if (mode === "subscribe" && token === VERIFY_TOKEN) return res.status(200).send(String(chall || ""));
   return next();
 });
 
+/* ================ Webhook (POST) ================ */
 router.post("/wa/webhook", async (req, res, next) => {
   try {
     const entry  = req.body?.entry?.[0];
     const change = entry?.changes?.[0];
     const value  = change?.value;
     const msg    = value?.messages?.[0];
-    if (!msg) return next();
+    if (!msg) return next();                 // deja pasar a otras rutas si existieran
     if (seenWamid(msg.id)) return res.sendStatus(200);
 
     const from = (msg.from || "").replace(/[^\d]/g, "");
     const vendorName = vendorNameOf(from);
-    if (!vendorName) return next();
+    if (!vendorName) return next();          // si no es un vendedor, que atienda el módulo público
 
     const s = getS(from);
 
+    // 1) Primer contacto en HUB → solo mostrar menú (sin saludar en routers)
     if (!s.greeted) {
       s.greeted = true;
       s.mode = null;
@@ -116,21 +135,21 @@ router.post("/wa/webhook", async (req, res, next) => {
       return res.sendStatus(200);
     }
 
+    // 2) Ramas por tipo
     if (msg.type === "interactive") {
       const br = msg.interactive?.button_reply;
       const lr = msg.interactive?.list_reply;
       const id = (br?.id || lr?.id || "").toString();
 
       if (id === "V_MENU_QUOTE") {
+        // MODO ASESOR: el módulo del asesor se encarga de ENVIAR PRIMERO EL BLOQUE
         s.mode = "advisor"; setS(from, s);
-        await toText(from, "Perfecto, seguimos con *cotización*.");
-        return advisorDelegate(req, res, next);
+        return advisorRouter(req, res, next);
       }
 
       if (id === "V_MENU_EXP") {
         s.mode = "sheets"; setS(from, s);
-        await toText(from, "Entendido, vamos a *registrar gastos*.");
-        return sheetsDelegate(req, res, next);
+        return sheetsRouter(req, res, next);
       }
 
       if (id === "V_MENU_BACK") {
@@ -139,8 +158,9 @@ router.post("/wa/webhook", async (req, res, next) => {
         return res.sendStatus(200);
       }
 
-      if (s.mode === "advisor") return advisorDelegate(req, res, next);
-      if (s.mode === "sheets")  return sheetsDelegate(req, res, next);
+      // Si ya está en algún modo, delega
+      if (s.mode === "advisor") return advisorRouter(req, res, next);
+      if (s.mode === "sheets")  return sheetsRouter(req, res, next);
       await showVendorMenu(from, vendorName);
       return res.sendStatus(200);
     }
@@ -154,43 +174,34 @@ router.post("/wa/webhook", async (req, res, next) => {
         return res.sendStatus(200);
       }
 
+      // accesos rápidos
       if (/(gasto|registrar|rendici[oó]n)/i.test(text)) {
         s.mode = "sheets"; setS(from, s);
-        await toText(from, "Vamos a *registrar gastos*.");
-        return sheetsDelegate(req, res, next);
+        return sheetsRouter(req, res, next);
       }
-
       if (/(cotiz|precio|presupuesto)/i.test(text)) {
         s.mode = "advisor"; setS(from, s);
-        await toText(from, "Vamos con tu *cotización*.");
-        return advisorDelegate(req, res, next);
+        return advisorRouter(req, res, next);
       }
 
-      if (s.mode === "advisor") return advisorDelegate(req, res, next);
-      if (s.mode === "sheets")  return sheetsDelegate(req, res, next);
+      // delega si hay modo activo
+      if (s.mode === "advisor") return advisorRouter(req, res, next);
+      if (s.mode === "sheets")  return sheetsRouter(req, res, next);
 
       await showVendorMenu(from, vendorName);
       return res.sendStatus(200);
     }
 
-    if (s.mode === "advisor") return advisorDelegate(req, res, next);
-    if (s.mode === "sheets")  return sheetsDelegate(req, res, next);
+    // default: delega si hay modo activo
+    if (s.mode === "advisor") return advisorRouter(req, res, next);
+    if (s.mode === "sheets")  return sheetsRouter(req, res, next);
 
     await showVendorMenu(from, vendorName);
     return res.sendStatus(200);
   } catch (e) {
-    console.error("[VENDORS] webhook error", e);
-    return next();
+    console.error("[HUB] webhook error", e);
+    return next(e);
   }
 });
-
-async function advisorDelegate(req, res, next) {
-  try { return advisorRouter(req, res, next); }
-  catch (e) { console.error("[VENDORS] advisorDelegate error", e); return next(e); }
-}
-async function sheetsDelegate(req, res, next) {
-  try { return sheetsRouter(req, res, next); }
-  catch (e) { console.error("[VENDORS] sheetsDelegate error", e); return next(e); }
-}
 
 export default router;

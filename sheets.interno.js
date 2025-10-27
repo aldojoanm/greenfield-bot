@@ -1,3 +1,4 @@
+// sheets.interno.js
 import "dotenv/config";
 import { google } from "googleapis";
 
@@ -19,9 +20,7 @@ export async function getSheets() {
       scopes: ["https://www.googleapis.com/auth/spreadsheets"],
     });
   } else {
-    throw new Error(
-      "No hay credenciales de Google. Define GOOGLE_CREDENTIALS_JSON2 o GOOGLE_APPLICATION_CREDENTIALS."
-    );
+    throw new Error("No hay credenciales de Google. Define GOOGLE_CREDENTIALS_JSON2 o GOOGLE_APPLICATION_CREDENTIALS.");
   }
   const client = await auth.getClient();
   _sheets = google.sheets({ version: "v4", auth: client });
@@ -30,6 +29,7 @@ export async function getSheets() {
 
 const pad2 = (n) => String(n).padStart(2, "0");
 const LOCAL_TZ = process.env.LOCAL_TZ || "America/La_Paz";
+const a1 = (sheetName) => `'${String(sheetName).replace(/'/g, "''")}'`; // nombre de hoja seguro
 
 export function nowDisplay() {
   try {
@@ -67,25 +67,10 @@ export function todayISODate() {
 }
 
 export const HEADERS = [
-  "id",
-  "fecha",
-  "categoria",
-  "lugar",
-  "detalle",
-  "km",
-  "factura",
-  "monto_bs",
-  "total_dia_bs",
+  "id","fecha","categoria","lugar","detalle","km","factura","monto_bs","total_dia_bs",
 ];
 
-// ───────────────────────────────────────────────────────────
-// A1 helper: comilla simple y escapa ' → '' para nombres de hoja
-const a1 = (sheetName) => `'${String(sheetName).replace(/'/g, "''")}'`;
-// ───────────────────────────────────────────────────────────
-
-function canonSheetName(name = "") {
-  return String(name || "Empleado").trim().slice(0, 99);
-}
+function canonSheetName(name = "") { return String(name || "Empleado").trim().slice(0, 99); }
 function num(x) {
   if (typeof x === "number") return x;
   const s = String(x ?? "").replace(/\s+/g, "").replace(/,/g, ".");
@@ -147,7 +132,6 @@ async function getNextId(hoja) {
   return last.length ? Math.max(...last) + 1 : 1;
 }
 
-/** KM anterior no vacío (último de la hoja) */
 export async function lastKm(hoja) {
   const sheets = await getSheets();
   const spreadsheetId = process.env.SHEETS_SPREADSHEET_ID2;
@@ -202,7 +186,6 @@ export async function appendExpenseRow(
   const fecha = nowDisplay();
   const montoN = num(monto);
 
-  // KM: vacío si no se proporcionó; número si sí se proporcionó
   let kmOut = "";
   if (km !== undefined && km !== null && String(km) !== "") {
     kmOut = num(km);
@@ -211,15 +194,8 @@ export async function appendExpenseRow(
   const totalDia = totalPrev + montoN;
 
   const out = [
-    id,
-    fecha,
-    String(categoria || "").toLowerCase(),
-    lugar,
-    detalle,
-    kmOut,            // puede quedar "" (vacío)
-    factura,
-    montoN || 0,
-    totalDia,
+    id, fecha, String(categoria || "").toLowerCase(),
+    lugar, detalle, kmOut, factura, montoN || 0, totalDia,
   ];
 
   await sheets.spreadsheets.values.append({
@@ -271,12 +247,12 @@ export async function todaySummary(hoja) {
   const parts = [];
   for (const [cat, arr] of byCat.entries()) {
     const totalCat = arr.reduce((a, rw) => a + num(rw[7] || 0), 0);
-    const kmCat = arr.reduce((a, rw) => a + num(rw[5] || 0), 0);
+    const kmCat    = arr.reduce((a, rw) => a + num(rw[5] || 0), 0);
     const lines = arr.map((rw) => {
       const lugar = rw[3] ? `@ ${rw[3]} ` : "";
-      const det = rw[4] ? `— ${rw[4]} ` : "";
-      const fac = rw[6] ? `(Fac ${rw[6]}) ` : "";
-      const km = String(rw[5] ?? "") !== "" ? `| ${num(rw[5])} km ` : "";
+      const det   = rw[4] ? `— ${rw[4]} ` : "";
+      const fac   = rw[6] ? `(Fac ${rw[6]}) ` : "";
+      const km    = String(rw[5] ?? "") !== "" ? `| ${num(rw[5])} km ` : "";
       return `   - ${lugar}${det}${fac}${km}Bs ${fmt(rw[7])}`;
     });
     parts.push(
