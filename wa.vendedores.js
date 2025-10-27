@@ -1,4 +1,6 @@
 import express from "express";
+import advisorRouter from "./wa.js";
+import sheetsRouter from "./wa.sheets.js";
 
 const router = express.Router();
 
@@ -10,9 +12,7 @@ const dbg = (...a) => { if (DEBUG) console.log("[VENDORS]", ...a); };
 
 function parseVendorsFromEnv() {
   const byJson = process.env.WHATSAPP_VENDOR_CONTACTS || "";
-  if (byJson.trim()) {
-    try { return JSON.parse(byJson); } catch {}
-  }
+  if (byJson.trim()) { try { return JSON.parse(byJson); } catch {} }
   const byCsv = process.env.WHATSAPP_VENDOR_CONTACTS_CSV || "";
   if (byCsv.trim()) {
     const map = {};
@@ -23,7 +23,7 @@ function parseVendorsFromEnv() {
     }
     return map;
   }
-  return { "59170000000": "Pedro Perez", "59171111111": "Maria Lopez" };
+  return {};
 }
 const VENDORS = parseVendorsFromEnv();
 const vendorNameOf = (waId="") => VENDORS[String(waId).replace(/[^\d]/g,"")] || null;
@@ -85,8 +85,6 @@ const PROCESSED_TTL = 5 * 60 * 1000;
 setInterval(() => { const now = Date.now(); for (const [k, ts] of processed) if (now - ts > PROCESSED_TTL) processed.delete(k); }, 60000);
 const seenWamid = (id) => { if (!id) return false; const now = Date.now(); const last = processed.get(id) || 0; processed.set(id, now); return (now - last) < PROCESSED_TTL; };
 
-const CATALOG_URL = process.env.CATALOG_URL || "https://greenfield-bot.onrender.com/catalog.html";
-
 router.get("/wa/webhook", (req, res, next) => {
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
@@ -103,6 +101,7 @@ router.post("/wa/webhook", async (req, res, next) => {
     const msg    = value?.messages?.[0];
     if (!msg) return next();
     if (seenWamid(msg.id)) return res.sendStatus(200);
+
     const from = (msg.from || "").replace(/[^\d]/g, "");
     const vendorName = vendorNameOf(from);
     if (!vendorName) return next();
@@ -111,6 +110,7 @@ router.post("/wa/webhook", async (req, res, next) => {
 
     if (!s.greeted) {
       s.greeted = true;
+      s.mode = null;
       setS(from, s);
       await showVendorMenu(from, vendorName);
       return res.sendStatus(200);
@@ -122,10 +122,9 @@ router.post("/wa/webhook", async (req, res, next) => {
       const id = (br?.id || lr?.id || "").toString();
 
       if (id === "V_MENU_QUOTE") {
-        s.mode = null; setS(from, s);
-        await toText(from, `Perfecto. Para cotizar, abre el *catálogo*, añade tus productos y toca *Enviar a WhatsApp*:\n${CATALOG_URL}`);
-        await showBackToMenu(from);
-        return res.sendStatus(200);
+        s.mode = "advisor"; setS(from, s);
+        await toText(from, "Perfecto, seguimos con *cotización*.");
+        return advisorDelegate(req, res, next);
       }
 
       if (id === "V_MENU_EXP") {
@@ -140,24 +139,43 @@ router.post("/wa/webhook", async (req, res, next) => {
         return res.sendStatus(200);
       }
 
-      if (s.mode === "sheets") return sheetsDelegate(req, res, next);
+      if (s.mode === "advisor") return advisorDelegate(req, res, next);
+      if (s.mode === "sheets")  return sheetsDelegate(req, res, next);
       await showVendorMenu(from, vendorName);
       return res.sendStatus(200);
     }
 
     if (msg.type === "text") {
       const text = (msg.text?.body || "").trim().toLowerCase();
+
       if (text === "menu" || text === "inicio") {
         s.mode = null; setS(from, s);
         await showVendorMenu(from, vendorName);
         return res.sendStatus(200);
       }
-      if (s.mode === "sheets") return sheetsDelegate(req, res, next);
+
+      if (/(gasto|registrar|rendici[oó]n)/i.test(text)) {
+        s.mode = "sheets"; setS(from, s);
+        await toText(from, "Vamos a *registrar gastos*.");
+        return sheetsDelegate(req, res, next);
+      }
+
+      if (/(cotiz|precio|presupuesto)/i.test(text)) {
+        s.mode = "advisor"; setS(from, s);
+        await toText(from, "Vamos con tu *cotización*.");
+        return advisorDelegate(req, res, next);
+      }
+
+      if (s.mode === "advisor") return advisorDelegate(req, res, next);
+      if (s.mode === "sheets")  return sheetsDelegate(req, res, next);
+
       await showVendorMenu(from, vendorName);
       return res.sendStatus(200);
     }
 
-    if (s.mode === "sheets") return sheetsDelegate(req, res, next);
+    if (s.mode === "advisor") return advisorDelegate(req, res, next);
+    if (s.mode === "sheets")  return sheetsDelegate(req, res, next);
+
     await showVendorMenu(from, vendorName);
     return res.sendStatus(200);
   } catch (e) {
@@ -166,15 +184,13 @@ router.post("/wa/webhook", async (req, res, next) => {
   }
 });
 
-import sheetsRouter  from "./wa.sheets.js";
-
+async function advisorDelegate(req, res, next) {
+  try { return advisorRouter(req, res, next); }
+  catch (e) { console.error("[VENDORS] advisorDelegate error", e); return next(e); }
+}
 async function sheetsDelegate(req, res, next) {
-  try {
-    return sheetsRouter(req, res, next);
-  } catch (e) {
-    console.error("[VENDORS] sheetsDelegate error", e);
-    return next(e);
-  }
+  try { return sheetsRouter(req, res, next); }
+  catch (e) { console.error("[VENDORS] sheetsDelegate error", e); return next(e); }
 }
 
 export default router;
