@@ -1410,33 +1410,6 @@ if (parsedCart && !IS_VENDOR && !advFlow(fromId)) {
             if (okTxt) console.log('[ADVISOR] alerta enviada a', advisor);
             else console.warn('[ADVISOR] no se pudo enviar alerta a', advisor);
           }
-try {
-  const safeName = (s.profileName || String(fromId))
-    .replace(/[^\w\s\-.]/g, '')
-    .replace(/\s+/g, '_');
-
-  const filename = pdfInfo?.filename || `Cotizacion_${safeName}.pdf`;
-  const caption  = `Cotización — ${s.profileName || fromId}`;
-  const mediaId  = await waUploadPDFSmart(pdfInfo, filename);
-
-  if (mediaId) {
-    for (const advisor of ADVISOR_WA_NUMBERS) {
-      const okDoc = await waSendQ(advisor, {
-        messaging_product: 'whatsapp',
-        to: advisor,
-        type: 'document',
-        document: { id: mediaId, filename, caption } // ← aquí va mediaId
-      });
-      if (!okDoc) console.warn('[ADVISOR] PDF no enviado a', advisor);
-    }
-  } else {
-    console.warn('[ADVISOR] No se obtuvo mediaId ni path del PDF para reenviar al asesor.');
-  }
-} catch (err) {
-  console.error('[ADVISOR] error al reenviar PDF:', err);
-}
-
-
         }
         humanOn(fromId, 4);
         s._closedAt = Date.now();

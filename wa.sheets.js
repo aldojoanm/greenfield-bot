@@ -1,3 +1,4 @@
+// wa.sheets.js
 import express from "express";
 import {
   ensureEmployeeSheet,
@@ -16,6 +17,7 @@ const DEBUG        = process.env.DEBUG_LOGS === "1";
 const log = (...a) => console.log("[WA]", ...a);
 const dbg = (...a) => { if (DEBUG) console.log("[DBG]", ...a); };
 
+/* ============ vendors (para saber si saludar o no) ============ */
 function parseVendorsFromEnv() {
   const byJson = process.env.WHATSAPP_VENDOR_CONTACTS || "";
   if (byJson.trim()) { try { return JSON.parse(byJson); } catch {} }
@@ -34,6 +36,7 @@ function parseVendorsFromEnv() {
 const VENDORS = parseVendorsFromEnv();
 const vendorNameOf = (waId="") => VENDORS[String(waId).replace(/[^\d]/g,"")] || null;
 
+/* ===================== Estado ===================== */
 const S = new Map();
 const getS = (id) => {
   if (!S.has(id)) S.set(id, {
@@ -42,13 +45,13 @@ const getS = (id) => {
     lastKm: null,
     etapa: "ask_categoria",
     pageIdx: 0,
-    flow: null,
-    numpad: null
+    flow: null
   });
   return S.get(id);
 };
 const setS = (id, v) => S.set(id, v);
 
+/* ===================== WhatsApp ===================== */
 async function waSendQ(to, payload) {
   const url = `https://graph.facebook.com/v20.0/${WA_PHONE_ID}/messages`;
   dbg("SEND", { to, type: payload.type || payload?.interactive?.type });
@@ -84,7 +87,7 @@ const toButtons = (to, body, buttons = []) =>
   });
 
 async function toPagedList(to, { body, buttonTitle, rows, pageIdx, title }) {
-  const PAGE_SIZE = 8;
+  const PAGE_SIZE = 8; // 8 + Prev + Next = 10
   const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   const p = Math.min(Math.max(0, pageIdx || 0), totalPages - 1);
   const start = p * PAGE_SIZE;
@@ -111,6 +114,7 @@ async function toPagedList(to, { body, buttonTitle, rows, pageIdx, title }) {
   });
 }
 
+/* ===================== Flujo gastos ===================== */
 const CATS = ["combustible", "alimentacion", "hospedaje", "peajes", "aceites", "llantas", "frenos", "otros"];
 
 async function pedirCategoria(to) {
@@ -129,8 +133,8 @@ function buildFlow(categoria) {
   if (cat === "combustible") {
     return [
       { key: "lugar",   prompt: "📍 ¿Dónde cargaste combustible? (ciudad/ubicación)" },
-      { key: "km",      prompt: "⛽ Ingresa el kilometraje del vehículo." },
-      { key: "monto",   prompt: "💵 Ingresa el monto en Bs." },
+      { key: "km",      prompt: "⛽ Ingresa el kilometraje del vehículo (solo número)." },
+      { key: "monto",   prompt: "💵 Ingresa el monto en Bs (ej.: 120.50)." },
       { key: "factura", prompt: "🧾 Número de factura/recibo (o escribe “ninguno”)." },
     ];
   }
@@ -138,15 +142,15 @@ function buildFlow(categoria) {
     return [
       { key: "lugar",   prompt: "📍 ¿Dónde se realizó el servicio/compra?" },
       { key: "detalle", prompt: "📝 Detalla brevemente el servicio o producto." },
-      { key: "km",      prompt: "🚗 Kilometraje del vehículo." },
+      { key: "km",      prompt: "🚗 Kilometraje del vehículo (solo número)." },
       { key: "factura", prompt: "🧾 Número de factura/recibo (o “ninguno”)." },
-      { key: "monto",   prompt: "💵 Monto en Bs." },
+      { key: "monto",   prompt: "💵 Monto en Bs (ej.: 250.00)." },
     ];
   }
   return [
     { key: "detalle", prompt: "📝 Describe brevemente el gasto." },
     { key: "factura", prompt: "🧾 Número de factura/recibo (o “ninguno”)." },
-    { key: "monto",   prompt: "💵 Ingresa el monto en Bs." },
+    { key: "monto",   prompt: "💵 Ingresa el monto en Bs (ej.: 80.00)." },
   ];
 }
 
@@ -158,10 +162,6 @@ function parseNumberFlexible(s = "") {
 
 async function askCurrentStep(to, s) {
   const step = s.flow.steps[s.flow.i];
-  if (step.key === "km" || step.key === "monto" || step.key === "cantidad") {
-    await showNumpad(to, s, step.key, step.prompt);
-    return;
-  }
   if (step.key === "km") {
     const prev = await lastKm(s.empleado);
     s.lastKm = prev;
@@ -173,140 +173,7 @@ async function askCurrentStep(to, s) {
   }
 }
 
-function buildNumpadRows(current) {
-  const rows = [];
-  for (let d = 1; d <= 9; d++) rows.push({ id: `NUM_${d}`, title: `${d}` });
-  rows.push({ id: "NUM_0", title: "0" });
-  rows.push({ id: "NUM_DOT", title: "." });
-  rows.push({ id: "NUM_DEL", title: "⌫ Borrar" });
-  rows.push({ id: "NUM_OK",  title: "OK" });
-  return rows.map(r => ({ id: r.id, title: r.title }));
-}
-
-async function showNumpad(to, s, field, label) {
-  s.numpad = s.numpad && s.numpad.field === field ? s.numpad : { field, value: "", pageIdx: 0 };
-  setS(to, s);
-  const header = `${label}\nValor actual: *${s.numpad.value || "—"}*`;
-  const rows = buildNumpadRows(s.numpad.value);
-  await toPagedList(to, { body: header, buttonTitle: "Elegir", rows, pageIdx: s.numpad.pageIdx || 0, title: "Teclado numérico" });
-}
-
-async function handleNumpadAction(from, s, id) {
-  if (!s.numpad) return false;
-  const f = s.numpad;
-  if (id === "NAV_NEXT") { f.pageIdx = (f.pageIdx || 0) + 1; setS(from, s); await showNumpad(from, s, f.field, ""); return true; }
-  if (id === "NAV_PREV") { f.pageIdx = Math.max(0, (f.pageIdx || 0) - 1); setS(from, s); await showNumpad(from, s, f.field, ""); return true; }
-  if (id.startsWith("NUM_")) {
-    if (id === "NUM_OK") {
-      const txt = f.value || "";
-      s.numpad = null; setS(from, s);
-      await processFlowText(from, txt, s);
-      return true;
-    }
-    if (id === "NUM_DEL") {
-      f.value = f.value.slice(0, -1);
-      setS(from, s);
-      await showNumpad(from, s, f.field, "");
-      return true;
-    }
-    if (id === "NUM_DOT") {
-      if (!f.value.includes(".")) f.value = (f.value || "") + ".";
-      setS(from, s);
-      await showNumpad(from, s, f.field, "");
-      return true;
-    }
-    const digit = id.slice(4);
-    f.value = (f.value || "") + digit;
-    setS(from, s);
-    await showNumpad(from, s, f.field, "");
-    return true;
-  }
-  return false;
-}
-
-async function finishExpense(from, saved, totalHoy, s) {
-  const { categoria, lugar = "", detalle = "", km = undefined, factura = "", monto = 0 } = s.flow.data;
-  const prettyCat = categoria[0].toUpperCase() + categoria.slice(1);
-  const lines = [
-    `✅ *Registrado* en hoja: ${s.empleado}`,
-    `• Categoría: ${prettyCat}`,
-    lugar ? `• Lugar: ${lugar}` : null,
-    detalle ? `• Detalle: ${detalle}` : null,
-    (km !== undefined && km !== null && String(km) !== "") ? `• Kilometraje: ${km} km` : null,
-    factura ? `• Factura/Recibo: ${factura}` : "• Factura/Recibo: —",
-    `• Monto: Bs ${Number(monto).toFixed(2)}`,
-    `• ID: ${saved.id} — Fecha: ${saved.fecha}`,
-    `*Total del día*: Bs ${Number(totalHoy).toFixed(2)}`
-  ].filter(Boolean);
-  await toText(from, lines.join("\n"));
-  s.etapa = "ask_categoria";
-  s.flow = null;
-  setS(from, s);
-  await waSendQ(from, {
-    messaging_product: "whatsapp",
-    to: from,
-    type: "interactive",
-    interactive: {
-      type: "button",
-      body: { text: "¿Algo más en que te pueda ayudar?" },
-      action: {
-        buttons: [
-          { type: "reply", reply: { id: "SEGUIR",      title: "Registrar otro gasto" } },
-          { type: "reply", reply: { id: "GO_QUOTE",   title: "Realizar cotización" } },
-          { type: "reply", reply: { id: "V_MENU_BACK", title: "Menú principal" } }
-        ]
-      }
-    }
-  });
-}
-
-async function processFlowText(from, text, s) {
-  if (!s.flow) return;
-  const step = s.flow.steps[s.flow.i];
-  const k = step.key;
-  let val = text;
-
-  if (k === "km" || k === "monto" || k === "cantidad") {
-    const n = parseNumberFlexible(text);
-    if (!Number.isFinite(n) || n < 0) {
-      await toText(from, k === "km" ? "Por favor envía un número válido de *kilómetros*." : "Por favor envía un *monto* válido (ej.: 120.50).");
-      await showNumpad(from, s, k, step.prompt);
-      return;
-    }
-    if (k === "km") {
-      const prev = s.lastKm ?? (s.empleado ? await lastKm(s.empleado) : null);
-      s.lastKm = prev;
-      if (prev != null && n < prev) {
-        await toText(from, `El kilometraje ingresado (*${n}*) es menor al último registrado (*${prev}*). Corrige el valor.`);
-        await showNumpad(from, s, k, step.prompt);
-        return;
-      }
-    }
-    val = n;
-  }
-  if (k === "factura" && /^ninguno?$/i.test(text)) val = "";
-
-  s.flow.data[k] = val;
-  s.flow.i += 1;
-
-  if (s.flow.i < s.flow.steps.length) {
-    await askCurrentStep(from, s);
-    setS(from, s);
-    return;
-  }
-
-  if (!s.empleado) {
-    await toText(from, "No se identificó una hoja activa. Escribe “inicio”.");
-    s.etapa = "ask_categoria"; s.flow = null; setS(from, s);
-    return;
-  }
-
-  const payload = s.flow.data;
-  const saved    = await appendExpenseRow(s.empleado, payload);
-  const totalHoy = await todayTotalFor(s.empleado);
-  await finishExpense(from, saved, totalHoy, s);
-}
-
+/* ===================== Verify (GET) ===================== */
 router.get("/wa/webhook", (req, res) => {
   const mode  = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
@@ -315,6 +182,7 @@ router.get("/wa/webhook", (req, res) => {
   return res.sendStatus(403);
 });
 
+/* ===================== Webhook (POST) ===================== */
 router.post("/wa/webhook", async (req, res) => {
   try {
     if (DEBUG) log("BODY", JSON.stringify(req.body));
@@ -328,16 +196,22 @@ router.post("/wa/webhook", async (req, res) => {
     const s = getS(from);
     dbg("IN", { from, type: msg.type, etapa: s.etapa, empleado: s.empleado });
 
+    /* ========== Primer mensaje en módulo de gastos ========== */
     if (!s.greeted) {
       s.greeted = true;
+
+      // Si es vendedor conocido → NO volver a saludar (para no duplicar lo del HUB)
       const officialName = vendorNameOf(from);
       const hojaName = officialName ? officialName : `GENÉRICO – ${from}`;
       const hoja = await ensureEmployeeSheet(hojaName);
       s.empleado = hoja;
       s.lastKm   = await lastKm(s.empleado);
+
+      // Solo saludo si NO es vendedor (flujo público)
       if (!officialName) {
         await toText(from, `Hola, tu número *${from}* no está en la lista oficial de vendedores.\nRegistraré en la hoja: *${hojaName}*.\n(Pídele al admin que te agregue en WHATSAPP_VENDOR_CONTACTS).`);
       }
+
       s.etapa = "ask_categoria";
       s.pageIdx = 0;
       setS(from, s);
@@ -345,14 +219,13 @@ router.post("/wa/webhook", async (req, res) => {
       return res.sendStatus(200);
     }
 
+    /* =================== INTERACTIVO =================== */
     if (msg.type === "interactive") {
       const br = msg.interactive?.button_reply;
       const lr = msg.interactive?.list_reply;
       const id = (br?.id || lr?.id || "").toString();
       const idU = id.toUpperCase();
       dbg("INTERACTIVE", idU, "ETAPA", s.etapa);
-
-      if (s.numpad && await handleNumpadAction(from, s, idU)) return res.sendStatus(200);
 
       if (idU === "NAV_NEXT") {
         s.pageIdx = (s.pageIdx || 0) + 1; setS(from, s); await pedirCategoria(from); return res.sendStatus(200);
@@ -371,7 +244,7 @@ router.post("/wa/webhook", async (req, res) => {
       }
 
       if (idU === "SEGUIR") {
-        s.etapa = "ask_categoria"; s.numpad = null; setS(from, s); await pedirCategoria(from); return res.sendStatus(200);
+        s.etapa = "ask_categoria"; setS(from, s); await pedirCategoria(from); return res.sendStatus(200);
       }
 
       if (idU === "RESUMEN") {
@@ -382,23 +255,15 @@ router.post("/wa/webhook", async (req, res) => {
         return res.sendStatus(200);
       }
 
-      if (idU === "V_MENU_BACK" || idU === "GO_QUOTE") {
-        await toText(from, idU === "GO_QUOTE" ? "Abriendo módulo de cotización…" : "Volviendo al menú…");
-        await toButtons(from, "Listo", [
-          { title: "Realizar cotización", payload: "GO_QUOTE" },
-          { title: "Menú principal",     payload: "V_MENU_BACK" }
-        ]);
-        return res.sendStatus(200);
-      }
-
       return res.sendStatus(200);
     }
 
+    /* =================== TEXTO =================== */
     if (msg.type === "text") {
       const text = (msg.text?.body || "").trim();
 
       if (/^(menu|inicio)$/i.test(text)) {
-        s.etapa = "ask_categoria"; s.pageIdx = 0; s.flow = null; s.numpad = null; setS(from, s);
+        s.etapa = "ask_categoria"; s.pageIdx = 0; s.flow = null; setS(from, s);
         await pedirCategoria(from);
         return res.sendStatus(200);
       }
@@ -414,7 +279,69 @@ router.post("/wa/webhook", async (req, res) => {
       }
 
       if (s.etapa === "flow_step" && s.flow) {
-        await processFlowText(from, text, s);
+        const step = s.flow.steps[s.flow.i];
+        const k = step.key;
+        let val = text;
+
+        if (k === "km" || k === "monto") {
+          const n = parseNumberFlexible(text);
+          if (!Number.isFinite(n) || n < 0) {
+            await toText(from, k === "km" ? "Por favor envía un número válido de *kilómetros*." : "Por favor envía un *monto* válido en Bs (ej.: 120.50).");
+            return res.sendStatus(200);
+          }
+          if (k === "km") {
+            const prev = s.lastKm ?? (s.empleado ? await lastKm(s.empleado) : null);
+            s.lastKm = prev;
+            if (prev != null && n < prev) {
+              await toText(from, `El kilometraje ingresado (*${n}*) es menor al último registrado (*${prev}*). Corrige el valor.`);
+              return res.sendStatus(200);
+            }
+          }
+          val = n;
+        }
+        if (k === "factura" && /^ninguno?$/i.test(text)) val = "";
+
+        s.flow.data[k] = val;
+        s.flow.i += 1;
+
+        if (s.flow.i < s.flow.steps.length) {
+          await askCurrentStep(from, s);
+          setS(from, s);
+          return res.sendStatus(200);
+        }
+
+        if (!s.empleado) {
+          await toText(from, "No se identificó una hoja activa. Escribe “inicio”.");
+          s.etapa = "ask_categoria"; s.flow = null; setS(from, s);
+          return res.sendStatus(200);
+        }
+
+        const { categoria, lugar = "", detalle = "", km = undefined, factura = "", monto = 0 } = s.flow.data;
+        const saved    = await appendExpenseRow(s.empleado, { categoria, lugar, detalle, km, factura, monto });
+        const totalHoy = await todayTotalFor(s.empleado);
+
+        const prettyCat = categoria[0].toUpperCase() + categoria.slice(1);
+        const lines = [
+          `✅ *Registrado* en hoja: ${s.empleado}`,
+          `• Categoría: ${prettyCat}`,
+          lugar ? `• Lugar: ${lugar}` : null,
+          detalle ? `• Detalle: ${detalle}` : null,
+          (km !== undefined && km !== null && String(km) !== "") ? `• Kilometraje: ${km} km` : null,
+          factura ? `• Factura/Recibo: ${factura}` : "• Factura/Recibo: —",
+          `• Monto: Bs ${Number(monto).toFixed(2)}`,
+          `• ID: ${saved.id} — Fecha: ${saved.fecha}`,
+          `*Total del día*: Bs ${Number(totalHoy).toFixed(2)}`,
+        ].filter(Boolean);
+
+        await toText(from, lines.join("\n"));
+
+        s.etapa = "ask_categoria";
+        s.flow = null;
+        setS(from, s);
+        await toButtons(from, "¿Deseas registrar algo más?", [
+          { title: "Sí, seguir",  payload: "SEGUIR"  },
+          { title: "Ver resumen", payload: "RESUMEN" },
+        ]);
         return res.sendStatus(200);
       }
 
