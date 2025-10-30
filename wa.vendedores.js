@@ -49,7 +49,9 @@ async function waSendQ(to, payload) {
     console.error("[WA SEND ERROR]", r.status, t);
   }
 }
+
 const clamp = (t, n = 20) => (String(t).length <= n ? String(t) : String(t).slice(0, n - 1) + "…");
+
 const toButtons = (to, body, buttons = []) =>
   waSendQ(to, {
     messaging_product: "whatsapp",
@@ -72,6 +74,13 @@ async function showVendorMenu(to, name) {
   await toButtons(to, saludo, [
     { title: "Realizar cotización", payload: "V_MENU_QUOTE" },
     { title: "Registrar gastos",   payload: "V_MENU_EXP"   },
+  ]);
+}
+
+// === NUEVO: Botón para volver al menú principal ===
+async function sendHomeButton(to) {
+  await toButtons(to, "¿Querés volver al menú principal?", [
+    { title: "⬅️ Volver: Cotizar o Gastos", payload: "V_MENU_HOME" },
   ]);
 }
 
@@ -125,6 +134,13 @@ router.post("/wa/webhook", async (req, res, next) => {
       const lr = msg.interactive?.list_reply;
       const id = (br?.id || lr?.id || "").toString();
 
+      // === NUEVO: acción del botón Home ===
+      if (id === "V_MENU_HOME") {
+        s.mode = null; setS(from, s);
+        await showVendorMenu(from, vendorName);
+        return res.sendStatus(200);
+      }
+
       if (id === "V_MENU_QUOTE" || id === "GO_QUOTE") {
         s.mode = "advisor"; setS(from, s);
         await waSendQ(from, {
@@ -141,15 +157,19 @@ router.post("/wa/webhook", async (req, res, next) => {
               `ZONA: Norte`
           }
         });
+        // Mostrar botón para volver al menú desde la vista de cotización
+        await sendHomeButton(from);
         return res.sendStatus(200);
       }
 
       if (id === "V_MENU_EXP") {
         s.mode = "sheets"; setS(from, s);
+        // Mostrar botón para volver al menú desde la vista de gastos
+        await sendHomeButton(from);
         return sheetsRouter(req, res, next);
       }
 
-      if (id === "V_MENU_BACK") {
+      if (id === "V_MENU_BACK") { // compatibilidad con tu id previo
         s.mode = null; setS(from, s);
         await showVendorMenu(from, vendorName);
         return res.sendStatus(200);
@@ -162,9 +182,11 @@ router.post("/wa/webhook", async (req, res, next) => {
     }
 
     if (msg.type === "text") {
-      const text = (msg.text?.body || "").trim().toLowerCase();
+      const raw = (msg.text?.body || "").trim();
+      const text = raw.toLowerCase();
 
-      if (text === "menu" || text === "inicio") {
+      // === PALABRAS CLAVE PARA VOLVER AL MENÚ ===
+      if (text === "menu" || text === "inicio" || /volver( al)? men[uú]/i.test(raw)) {
         s.mode = null; setS(from, s);
         await showVendorMenu(from, vendorName);
         return res.sendStatus(200);
@@ -172,6 +194,7 @@ router.post("/wa/webhook", async (req, res, next) => {
 
       if (/(gasto|registrar|rendici[oó]n)/i.test(text)) {
         s.mode = "sheets"; setS(from, s);
+        await sendHomeButton(from);
         return sheetsRouter(req, res, next);
       }
       if (/(cotiz|precio|presupuesto)/i.test(text)) {
@@ -190,6 +213,7 @@ router.post("/wa/webhook", async (req, res, next) => {
               `ZONA: Norte`
           }
         });
+        await sendHomeButton(from);
         return res.sendStatus(200);
       }
 
