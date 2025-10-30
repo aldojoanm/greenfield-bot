@@ -170,12 +170,10 @@ async function advFinalize(fromId){
   const s = flow.s;
   const tmpId = `adv_${fromId}_${Date.now()}`;
 
-  // Genera PDF con los datos efímeros (no guarda sesión)
   let pdfInfo = null;
-  try { pdfInfo = await sendAutoQuotePDF(null, s); }
+  try { pdfInfo = await sendAutoQuotePDF(fromId, s); }
   catch(e){ console.error('[ADV] PDF error', e); }
 
-  // (Opcional) registra en Sheets como "asesor"
   try {
     const cotId = await appendFromSession(s, tmpId, 'asesor');
     s.vars.cotizacion_id = cotId;
