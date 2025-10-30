@@ -1000,6 +1000,25 @@ async function showProduct(to, prod, { withLink = true, preface = null } = {}) {
   }
 }
 
+function parseVendorsFromEnv() {
+  const byJson = process.env.WHATSAPP_VENDOR_CONTACTS || "";
+  if (byJson.trim()) { try { return JSON.parse(byJson); } catch {}
+  }
+  const byCsv = process.env.WHATSAPP_VENDOR_CONTACTS_CSV || "";
+  if (byCsv.trim()) {
+    const map = {};
+    for (const chunk of byCsv.split(",").map(s => s.trim()).filter(Boolean)) {
+      const [phone, ...nameParts] = chunk.split(":");
+      const name = (nameParts.join(":") || "").trim();
+      if (phone && name) map[phone.replace(/[^\d]/g,"")] = name;
+    }
+    return map;
+  }
+  return {};
+}
+const VENDORS_MAP = parseVendorsFromEnv();
+const isInVendorsMap = (id) => Boolean(VENDORS_MAP[digits(id)]);
+
 router.get('/wa/webhook',(req,res)=>{
   const mode=req.query['hub.mode'];
   const token=req.query['hub.verify_token'];
@@ -1100,6 +1119,8 @@ router.post('/wa/webhook', async (req,res)=>{
     const isInter = msg?.type === 'interactive';
     const interId = isInter ? (msg.interactive?.button_reply?.id || msg.interactive?.list_reply?.id || '') : '';
     const flowActive = advFlow(fromId);
+    const IS_VENDOR = Boolean(req?._fromHubVendor) || isAdvisor(fromId) || isInVendorsMap(fromId);
+    dbg('[HOOK]', { rawFrom, fromId, isVendor: IS_VENDOR });
 
 if (flowActive && parsedCart) {
   // se pegó el carrito dentro del flujo de asesor
@@ -1144,7 +1165,7 @@ if (flowActive && msg.type === 'text') {
 }
 
 
-if (parsedCart && !isAdvisor(fromId) && !advFlow(fromId)) {
+if (parsedCart && !IS_VENDOR && !advFlow(fromId)) {
   const s0 = S(fromId);
   s0.vars.cart = parsedCart.items || [];
   s0.pending = null;
@@ -1244,7 +1265,7 @@ if (parsedCart && !isAdvisor(fromId) && !advFlow(fromId)) {
       return res.sendStatus(200);
     }
 
-    if (isAdvisor(fromId)) {
+    if (IS_VENDOR) {
       advisorWindowTs = Date.now();
       if (parsedCart) {
         await advStart(fromId, parsedCart);

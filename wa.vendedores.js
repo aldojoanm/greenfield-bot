@@ -173,7 +173,7 @@ if (id === "V_MENU_QUOTE") {
       }
 
       // Si ya está en algún modo, delega
-      if (s.mode === "advisor") return advisorRouter(req, res, next);
+      if (s.mode === "advisor") { req._fromHubVendor = true; return advisorRouter(req, res, next); }
       if (s.mode === "sheets")  return sheetsRouter(req, res, next);
       await showVendorMenu(from, vendorName);
       return res.sendStatus(200);
@@ -213,7 +213,7 @@ if (/(cotiz|precio|presupuesto)/i.test(text)) {
 }
 
       // delega si hay modo activo
-      if (s.mode === "advisor") return advisorRouter(req, res, next);
+      if (s.mode === "advisor") { req._fromHubVendor = true; return advisorRouter(req, res, next); }
       if (s.mode === "sheets")  return sheetsRouter(req, res, next);
 
       await showVendorMenu(from, vendorName);
@@ -221,7 +221,7 @@ if (/(cotiz|precio|presupuesto)/i.test(text)) {
     }
 
     // default: delega si hay modo activo
-    if (s.mode === "advisor") return advisorRouter(req, res, next);
+    if (s.mode === "advisor") { req._fromHubVendor = true; return advisorRouter(req, res, next); }
     if (s.mode === "sheets")  return sheetsRouter(req, res, next);
 
     await showVendorMenu(from, vendorName);
