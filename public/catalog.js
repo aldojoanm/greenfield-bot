@@ -2,7 +2,7 @@
 (function(){
   const MIN_ORDER_USD = 3000;
 
-  const WA_NUMBER = (document.documentElement.getAttribute('data-wa-number') || '59162239865')
+  const WA_NUMBER = (document.documentElement.getAttribute('data-wa-number') || '15551388420')
     .replace(/\D/g,'');
 
   const root     = document.documentElement;
