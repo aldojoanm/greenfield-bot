@@ -1099,18 +1099,7 @@ router.post('/wa/webhook', async (req,res)=>{
     const parsedCart = parseCartFromText(textRaw);
     const isInter = msg?.type === 'interactive';
     const interId = isInter ? (msg.interactive?.button_reply?.id || msg.interactive?.list_reply?.id || '') : '';
-// ====== PRIORIDAD: si hay flujo de asesor activo, manejar aquí ======
-const flowActive = advFlow(fromId);
-if (interId === 'ADV_START') {
-  await advStart(fromId, parsedCart || { items: [] });
-  return res.sendStatus(200);
-}
-
-// Opción 2: palabra clave del HUB o del asesor, p.ej. "COTIZAR_TERCERO"
-if (!flowActive && msg.type === 'text' && /^COTIZAR_TERCERO$/i.test(textRaw)) {
-  await advStart(fromId, parsedCart || { items: [] });
-  return res.sendStatus(200);
-}
+    const flowActive = advFlow(fromId);
 
 if (flowActive && parsedCart) {
   // se pegó el carrito dentro del flujo de asesor

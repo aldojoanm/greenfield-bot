@@ -10,6 +10,7 @@ const WA_TOKEN     = process.env.WHATSAPP_TOKEN || "";
 const WA_PHONE_ID  = process.env.WHATSAPP_PHONE_ID || "";
 const DEBUG        = process.env.DEBUG_LOGS === "1";
 const dbg = (...a) => { if (DEBUG) console.log("[HUB]", ...a); };
+const CATALOG_URL = process.env.CATALOG_URL || 'https://greenfield-bot.onrender.com/catalog.html';
 
 /* ================== Mapa de Vendedores ================== */
 function parseVendorsFromEnv() {
@@ -143,9 +144,20 @@ router.post("/wa/webhook", async (req, res, next) => {
 
 if (id === "V_MENU_QUOTE") {
   s.mode = "advisor"; setS(from, s);
-  await toButtons(from, "Perfecto. ¿Iniciamos la cotización para tu cliente?", [
-    { title: "Iniciar cotización", payload: "ADV_START" },
-  ]);
+  await waSendQ(from, {
+    messaging_product: "whatsapp",
+    to: from,
+    type: "text",
+    text: {
+      body:
+        `Abrí el *catálogo* y armá el pedido para tu cliente.\n` +
+        `${CATALOG_URL}\n\n` +
+        `Cuando me llegue el mensaje del carrito, te voy a pedir, en un *solo mensaje*:\n\n` +
+        `NOMBRE: Juan Pérez\n` +
+        `DEPARTAMENTO: Santa Cruz\n` +
+        `ZONA: Norte`
+    }
+  });
   return res.sendStatus(200);
 }
 
@@ -183,9 +195,20 @@ if (id === "V_MENU_QUOTE") {
       }
 if (/(cotiz|precio|presupuesto)/i.test(text)) {
   s.mode = "advisor"; setS(from, s);
-  await toButtons(from, "¿Iniciamos la cotización para tu cliente?", [
-    { title: "Iniciar cotización", payload: "ADV_START" },
-  ]);
+  await waSendQ(from, {
+    messaging_product: "whatsapp",
+    to: from,
+    type: "text",
+    text: {
+      body:
+        `Abrí el *catálogo* y armá el pedido para tu cliente.\n` +
+        `${CATALOG_URL}\n\n` +
+        `Cuando me llegue el mensaje del carrito, te voy a pedir, en un *solo mensaje*:\n\n` +
+        `NOMBRE: Juan Pérez\n` +
+        `DEPARTAMENTO: Santa Cruz\n` +
+        `ZONA: Norte`
+    }
+  });
   return res.sendStatus(200);
 }
 
