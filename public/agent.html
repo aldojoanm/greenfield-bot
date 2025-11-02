@@ -4,63 +4,86 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
   <title>Inbox — Greenfield</title>
-  <link rel="stylesheet" href="./agent.css">
-  <!-- Config “de marca” para el front (puedes cambiar sin tocar el JS) -->
+
+  <!-- Estilos -->
+  <link rel="stylesheet" href="/public/agent.css">
+
+  <!-- Config de marca (editable sin tocar JS) -->
   <meta name="brand:name" content="Greenfield Agroquímicos">
   <meta name="brand:qr" content="/qr-pagos.png">
+
+  <!-- PWA -->
   <link rel="manifest" href="/public/manifest.webmanifest">
-<meta name="theme-color" content="#00a884">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="apple-touch-icon" href="/public/icons/icon-192.png">
+  <meta name="theme-color" content="#00a884">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="/public/greenfield-logo.png">
 </head>
 <body>
-  <div class="app" id="app">
-    <div class="left">
-      <div class="top">
-        <input id="search" placeholder="Buscar...">
-        <button class="btn sm" id="refresh" title="Refrescar (Sheets)">⟳</button>
-        <button class="btn sm" id="importWA" title="Importar WhatsApp (Sheets)">📥 Importar WA</button>
-        <button class="btn sm" id="logout" title="Salir">Salir</button>
-      </div>
-      <div class="list" id="list"></div>
-    </div>
+  <!-- App: Vista lista -->
+  <section id="view-list" class="view active">
+    <header class="topbar">
+      <h1>Inbox</h1>
+      <span id="conn" class="pill" aria-live="polite">Conectando…</span>
+    </header>
 
-    <div class="right">
-      <div class="top">
-        <button class="btn sm" id="toggleLeft" title="Chats">☰</button>
-        <div id="title">Inbox</div>
-        <span id="conn" class="pill" title="Estado de conexión" aria-live="polite">…</span>
-        <span id="status" class="pill" style="display:none"></span>
-        <div class="row">
-          <button class="btn sm" id="takeHuman">⏸️ Pausar bot</button>
-          <button class="btn sm" id="resumeBot">▶️ Bot ON</button>
-          <button class="btn sm" id="markRead">✓ Leído</button>
-          <button class="btn sm" id="requestInfo">📋 Solicitar datos</button>
-          <button class="btn sm" id="sendQR">QR</button>
-          <button class="btn sm" id="sendAccounts">CUENTAS</button>
+    <div class="filters">
+      <div class="filters-row">
+        <span id="msgCount" class="count">Mensajes (0)</span>
+        <div class="segmented">
+          <button class="seg active" data-filter="all">Todos</button>
+          <button class="seg" data-filter="done">Finalizados</button>
+          <button class="seg" data-filter="pending">No completados</button>
+          <button class="seg" data-filter="agent">Asesor</button>
         </div>
       </div>
-
-      <div class="chat">
-        <div class="msgs" id="msgs"></div>
-
-        <div class="input" id="dropZone">
-          <textarea id="box" placeholder="Escribe como asesor... (Enter envía, Shift+Enter salto)"></textarea>
-          <label class="clip" for="fileInput" title="Adjuntar archivos" aria-label="Adjuntar archivos">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M12 3l-4 4h3v6h2V7h3l-4-4z" fill="currentColor"/>
-              <path d="M5 19a2 2 0 002 2h10a2 2 0 002-2v-5h-2v5H7v-5H5v5z" fill="currentColor"/>
-            </svg>
-          </label>
-          <input id="fileInput" type="file" multiple style="display:none"
-            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,image/*,video/*,audio/*">
-          <button class="send" id="send">Enviar</button>
-        </div>
+      <div class="searchbar">
+        <input id="search" placeholder="Buscar…">
+        <button class="btn" id="importWA" title="Importar WhatsApp (Sheets)">📥</button>
+        <button class="btn" id="refresh" title="Refrescar">⟳</button>
+        <button class="btn" id="logout" title="Salir">Salir</button>
       </div>
     </div>
-  </div>
 
-  <script src="./agent.js" defer></script>
+    <div id="threadList" class="threads"></div>
+  </section>
+
+  <!-- App: Vista chat -->
+  <section id="view-chat" class="view">
+    <header class="chatbar">
+      <button id="backBtn" class="icon-btn" aria-label="Volver">←</button>
+      <div class="chat-title">
+        <div id="chatName" class="name">Contacto</div>
+        <div id="chatMeta" class="meta"></div>
+      </div>
+      <span id="status" class="pill" style="display:none">HUMANO</span>
+    </header>
+
+    <main id="msgs" class="msgs"></main>
+
+    <footer class="composer" id="dropZone">
+      <div class="left-actions">
+        <button id="moreBtn" class="icon-btn" aria-label="Más">＋</button>
+        <input id="fileInput" type="file" multiple style="display:none"
+          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,image/*,video/*,audio/*">
+        <button id="attachBtn" class="icon-btn" aria-label="Adjuntar">📎</button>
+      </div>
+      <textarea id="box" placeholder="Escribe un mensaje…"></textarea>
+      <button id="send" class="icon-btn send" aria-label="Enviar">➤</button>
+
+      <!-- Hoja de acciones -->
+      <div id="sheet" class="sheet">
+        <button class="sheet-item" id="takeHuman">⏸️ Pausar bot</button>
+        <button class="sheet-item" id="resumeBot">▶️ Bot ON</button>
+        <button class="sheet-item" id="markRead">✓ Marcar leído</button>
+        <button class="sheet-item" id="requestInfo">📋 Solicitar datos</button>
+        <button class="sheet-item" id="sendQR">🧾 Enviar QR</button>
+        <button class="sheet-item" id="sendAccounts">🏦 Cuentas</button>
+        <button class="sheet-item alt" id="closeSheet">Cerrar</button>
+      </div>
+    </footer>
+  </section>
+
+  <script src="/public/agent.js" defer></script>
 </body>
 </html>
