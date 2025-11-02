@@ -1,4 +1,4 @@
-const CACHE = 'inbox-greenfield-v4';
+const CACHE = 'inbox-greenfield-v5';
 const APP_SHELL = [
   './agent.html',
   './agent.css',

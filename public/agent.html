@@ -61,11 +61,21 @@
         <span id="status" class="pill" style="display:none">HUMANO</span>
       </header>
 
+      <!-- NUEVO: fila de acciones debajo del nombre/número (visible en desktop) -->
+      <div id="sheetRow" class="sheet-row only-desktop" role="toolbar" aria-label="Acciones del chat">
+        <button class="sheet-item" id="takeHuman">⏸️ Pausar bot</button>
+        <button class="sheet-item" id="resumeBot">▶️ Bot ON</button>
+        <button class="sheet-item" id="markRead">✓ Marcar leído</button>
+        <button class="sheet-item" id="requestInfo">📋 Solicitar datos</button>
+        <button class="sheet-item" id="sendQR">🧾 Enviar QR</button>
+        <button class="sheet-item" id="sendAccounts">🏦 Cuentas</button>
+      </div>
+
       <main id="msgs" class="msgs"></main>
 
       <footer class="composer" id="dropZone">
         <div class="left-actions">
-          <button id="moreBtn" class="icon-btn" aria-label="Más">＋</button>
+          <button id="moreBtn" class="icon-btn only-mobile" aria-label="Más">＋</button>
           <input id="fileInput" type="file" multiple style="display:none"
             accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,image/*,video/*,audio/*">
           <button id="attachBtn" class="icon-btn" aria-label="Adjuntar">📎</button>
@@ -73,14 +83,14 @@
         <textarea id="box" placeholder="Escribe un mensaje…"></textarea>
         <button id="send" class="icon-btn send" aria-label="Enviar">➤</button>
 
-        <!-- Hoja de acciones -->
+        <!-- Hoja de acciones MOBILE (sheet modal) -->
         <div id="sheet" class="sheet">
-          <button class="sheet-item" id="takeHuman">⏸️ Pausar bot</button>
-          <button class="sheet-item" id="resumeBot">▶️ Bot ON</button>
-          <button class="sheet-item" id="markRead">✓ Marcar leído</button>
-          <button class="sheet-item" id="requestInfo">📋 Solicitar datos</button>
-          <button class="sheet-item" id="sendQR">🧾 Enviar QR</button>
-          <button class="sheet-item" id="sendAccounts">🏦 Cuentas</button>
+          <button class="sheet-item" id="takeHuman_m">⏸️ Pausar bot</button>
+          <button class="sheet-item" id="resumeBot_m">▶️ Bot ON</button>
+          <button class="sheet-item" id="markRead_m">✓ Marcar leído</button>
+          <button class="sheet-item" id="requestInfo_m">📋 Solicitar datos</button>
+          <button class="sheet-item" id="sendQR_m">🧾 Enviar QR</button>
+          <button class="sheet-item" id="sendAccounts_m">🏦 Cuentas</button>
           <button class="sheet-item alt" id="closeSheet">Cerrar</button>
         </div>
       </footer>

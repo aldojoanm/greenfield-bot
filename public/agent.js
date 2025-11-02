@@ -25,7 +25,8 @@ const chatName   = document.getElementById('chatName');
 const chatMeta   = document.getElementById('chatMeta');
 const msgsEl     = document.getElementById('msgs');
 const moreBtn    = document.getElementById('moreBtn');
-const sheet      = document.getElementById('sheet');
+const sheetModal = document.getElementById('sheet');     // MOBILE modal
+const sheetRow   = document.getElementById('sheetRow');  // DESKTOP row
 const fileInput  = document.getElementById('fileInput');
 const dropZone   = document.getElementById('dropZone');
 const box        = document.getElementById('box');
@@ -35,6 +36,7 @@ const importBtn  = document.getElementById('importWA');
 const logoutBtn  = document.getElementById('logout');
 const searchEl   = document.getElementById('search');
 const segBtns    = Array.from(document.querySelectorAll('.segmented .seg'));
+const attachBtn  = document.getElementById('attachBtn');
 
 // ====== Estado ======
 let current = null;
@@ -57,6 +59,12 @@ const timeAgo = (ts)=> {
   if (diff < 86400) return `${Math.floor(diff/3600)}h`;
   return `${Math.floor(diff/86400)}d`;
 };
+
+// ===== iOS PWA safe-area/class =====
+(function ensureDisplayModeClass(){
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  if (isStandalone) document.documentElement.classList.add('standalone');
+})();
 
 // ====== Token 24h / dispositivo ======
 const TOKEN_TTL_MS = 24*60*60*1000;
@@ -246,8 +254,8 @@ async function openChat(id){
 }
 backBtn.onclick = ()=>{ current=null; viewChat.classList.remove('active'); viewList.classList.add('active'); };
 
-// ====== Acciones ======
-document.getElementById('requestInfo').onclick = async ()=>{
+// ====== Acciones (comparten lógica Desktop/Mobile) ======
+async function doRequestInfo(){
   if (!current) return;
   const nombre = current.name?.trim() || 'cliente';
   const part1 = [
@@ -264,8 +272,8 @@ document.getElementById('requestInfo').onclick = async ()=>{
   await api.send(current.id, part1);
   await api.send(current.id, part2);
   closeSheet();
-};
-document.getElementById('sendQR').onclick = async ()=>{
+}
+async function doSendQR(){
   if (!current) return;
   const QR_URLS = [BRAND_QR, './qr-pagos.png'];
   let blob = null, mime = 'image/png';
@@ -274,33 +282,60 @@ document.getElementById('sendQR').onclick = async ()=>{
   const file = new File([blob], 'qr-pagos.png', { type: mime });
   await api.sendMedia(current.id, [file], '');
   closeSheet();
-};
-document.getElementById('sendAccounts').onclick = async ()=>{ if (!current) return; await api.send(current.id, ACCOUNTS_TEXT); closeSheet(); };
-document.getElementById('markRead').onclick  = async ()=>{ if(!current) return; await api.read(current.id); closeSheet(); refresh(false); };
-document.getElementById('takeHuman').onclick = async ()=>{ if(!current) return; await api.handoff(current.id,'human'); statusPill.style.display='inline-block'; closeSheet(); };
-document.getElementById('resumeBot').onclick = async ()=>{ if(!current) return; await api.handoff(current.id,'bot'); statusPill.style.display='none'; closeSheet(); };
+}
+async function doSendAccounts(){ if (!current) return; await api.send(current.id, ACCOUNTS_TEXT); closeSheet(); }
+async function doMarkRead(){ if(!current) return; await api.read(current.id); closeSheet(); refresh(false); }
+async function doTakeHuman(){ if(!current) return; await api.handoff(current.id,'human'); statusPill.style.display='inline-block'; closeSheet(); }
+async function doResumeBot(){ if(!current) return; await api.handoff(current.id,'bot'); statusPill.style.display='none'; closeSheet(); }
 
-sendBtn.onclick = async ()=>{ const txt = box.value.trim(); if(!txt || !current) return; box.value=''; await api.send(current.id, txt); };
+// Desktop row
+document.getElementById('requestInfo').onclick = doRequestInfo;
+document.getElementById('sendQR').onclick = doSendQR;
+document.getElementById('sendAccounts').onclick = doSendAccounts;
+document.getElementById('markRead').onclick  = doMarkRead;
+document.getElementById('takeHuman').onclick = doTakeHuman;
+document.getElementById('resumeBot').onclick = doResumeBot;
+
+// Mobile sheet
+document.getElementById('requestInfo_m').onclick = doRequestInfo;
+document.getElementById('sendQR_m').onclick = doSendQR;
+document.getElementById('sendAccounts_m').onclick = doSendAccounts;
+document.getElementById('markRead_m').onclick  = doMarkRead;
+document.getElementById('takeHuman_m').onclick = doTakeHuman;
+document.getElementById('resumeBot_m').onclick = doResumeBot;
+
+const closeSheet = ()=> sheetModal.classList.remove('show');
+moreBtn.onclick = ()=> sheetModal.classList.toggle('show');
+document.getElementById('closeSheet').onclick = closeSheet;
+
+// ====== Envío / inputs ======
+sendBtn.onclick = async ()=>{
+  const txt = box.value.trim();
+  if(!txt || !current) return;
+  box.value='';
+  await api.send(current.id, txt);
+};
 box.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendBtn.click(); } });
 
-document.getElementById('attachBtn').onclick = ()=> fileInput.click();
-fileInput.onchange = async (e)=>{ const files = Array.from(e.target.files||[]); if(!files.length || !current) return; try{ await api.sendMedia(current.id, files, ''); } catch{ alert('Error subiendo archivo(s).'); } e.target.value=''; };
+attachBtn.onclick = ()=> fileInput.click();
+fileInput.onchange = async (e)=>{
+  const files = Array.from(e.target.files||[]);
+  if(!files.length || !current) return;
+  try{ await api.sendMedia(current.id, files, ''); } catch{ alert('Error subiendo archivo(s).'); }
+  e.target.value='';
+};
 
+// Drag&drop
 ['dragenter','dragover'].forEach(ev=> dropZone.addEventListener(ev, e=>{ e.preventDefault(); e.stopPropagation(); dropZone.classList.add('drag'); }));
 ['dragleave','drop'].forEach(ev=> dropZone.addEventListener(ev, e=>{ e.preventDefault(); e.stopPropagation(); dropZone.classList.remove('drag'); }));
 dropZone.addEventListener('drop', async (e)=>{ const files = Array.from(e.dataTransfer?.files||[]); if (!files.length || !current) return; try{ await api.sendMedia(current.id, files, ''); } catch{ alert('Error subiendo archivo(s).'); } });
 
-// Sheet
-const closeSheet = ()=> sheet.classList.remove('show');
-moreBtn.onclick = ()=> sheet.classList.toggle('show');
-document.getElementById('closeSheet').onclick = closeSheet;
-
-// Filtros
+// ====== Filtros lista ======
 function renderList(){ renderThreads(); }
 searchEl.oninput = renderList;
 segBtns.forEach(b=> b.onclick = ()=>{ segBtns.forEach(x=>x.classList.remove('active')); b.classList.add('active'); filter = b.dataset.filter; renderList(); });
 
-// Datos
+// ====== Datos ======
 async function refresh(openFirst=false){
   try{
     const {convos} = await api.convos();
@@ -312,8 +347,21 @@ async function refresh(openFirst=false){
   }catch{}
 }
 
+// ====== Personalización Desktop: botón "Subir archivo" ======
+function adjustDesktopControls(){
+  if (isDesktop()){
+    attachBtn.textContent = 'Subir archivo';
+    attachBtn.classList.add('btn');
+  } else {
+    attachBtn.textContent = '📎';
+    attachBtn.classList.remove('btn');
+  }
+}
+window.addEventListener('resize', adjustDesktopControls);
+
 // Bootstrap
 (async function(){
+  adjustDesktopControls();
   const ok = await requestToken(false);
   if (!ok) return;
   await refresh(true);
