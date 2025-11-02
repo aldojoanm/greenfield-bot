@@ -3,384 +3,59 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
-  <title>Inbox New Chem</title>
-  <style>
-    :root{
-      --bg:#0b141a;
-      --panel:#111b21;
-      --panel-2:#1f2c33;
-      --card:#0b141a;
-      --muted:#8696a0;
-      --txt:#e9edef;
-      --accent:#00a884;
-      --accent-2:#09c7a1;
-      --stroke:#202c33;
-      --ring:#233138;
-      --radius:18px;
-      --shadow:0 8px 24px rgba(0,0,0,.25);
-    }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.4 system-ui,Segoe UI,Roboto,Ubuntu,Arial}
-    .app{display:grid;grid-template-columns:320px 1fr;height:100dvh;overflow:hidden}
-    .left,.right,.chat,.list,.msgs{min-height:0}
-    .left{border-right:1px solid var(--stroke);background:var(--panel);display:flex;flex-direction:column;min-width:280px}
-    .top{position:sticky;top:0;z-index:2;padding:10px 12px;border-bottom:1px solid var(--stroke);background:var(--panel);display:flex;gap:8px;align-items:center}
-    .top input{flex:1;background:var(--panel-2);border:1px solid var(--ring);color:var(--txt);padding:10px 12px;border-radius:999px;outline:none}
-    .btn{background:var(--panel-2);border:1px solid var(--ring);color:var(--txt);padding:10px 12px;border-radius:12px;cursor:pointer;transition:.15s}
-    .btn:hover{filter:brightness(1.05)}
-    .btn.sm{padding:8px 10px}
-    .list{overflow:auto}
-    .item{cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--stroke);transition:.12s background}
-    .item:hover{background:#182229}
-    .item.active{background:#182229}
-    .name{font-weight:600}
-    .sub{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.95}
-    .pill{background:#233138;color:#cdd6da;font-size:11px;border-radius:999px;padding:2px 8px}
-    .pill.human{background:#5b21b6}
-    .right{display:flex;flex-direction:column;min-width:0}
-    .right .top{background:var(--panel);border-bottom:1px solid var(--stroke);gap:10px}
-    #title{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .row{display:flex;gap:8px}
-    .chat{flex:1;display:flex;flex-direction:column;background:var(--card)}
-    .msgs{flex:1;overflow:auto;padding:16px 8vw 18px 8vw;display:flex;flex-direction:column;gap:8px;background:
-      radial-gradient(900px 400px at 10% -10%, rgba(0,168,132,.06), transparent),
-      radial-gradient(800px 500px at 120% 10%, rgba(41,182,246,.05), transparent),
-      var(--card);overscroll-behavior:contain}
-    @media (max-width:1100px){ .msgs{padding:14px 24px} }
-    .msgs::-webkit-scrollbar,.list::-webkit-scrollbar{width:10px}
-    .msgs::-webkit-scrollbar-thumb,.list::-webkit-scrollbar-thumb{background:#22323a;border-radius:8px}
-    .msgs::-webkit-scrollbar-track,.list::-webkit-scrollbar-track{background:transparent}
-    .bubble{position:relative;max-width:74%;padding:10px 12px;border-radius:var(--radius);line-height:1.35;white-space:pre-wrap;word-break:break-word;box-shadow:var(--shadow)}
-    .bubble.u{background:#202c33;align-self:flex-start;border:1px solid #2a3a40;border-bottom-left-radius:6px}
-    .bubble.u::after{content:"";position:absolute;bottom:0;left:-6px;border:8px solid transparent;border-right-color:#202c33}
-    .bubble.b{background:#0f1f2c;align-self:flex-end;border:1px solid #1a2a38;border-bottom-right-radius:6px}
-    .bubble.b::after{content:"";position:absolute;bottom:0;right:-6px;border:8px solid transparent;border-left-color:#0f1f2c}
-    .bubble.a{background:linear-gradient(180deg,#0a8e7b,#0b6d60);align-self:flex-end;border:1px solid #0f5c52;border-bottom-right-radius:6px}
-    .bubble.a::after{content:"";position:absolute;bottom:0;right:-6px;border:8px solid transparent;border-left-color:#0a8e7b}
-    .bubble.sys{align-self:center;background:#0f1b24;color:#93c5fd;border:1px dashed #2a4054;border-radius:12px}
-    .input{display:flex;gap:8px;padding:12px;border-top:1px solid var(--stroke);background:var(--panel);align-items:flex-end}
-    .input textarea{min-height:44px;flex:1;background:var(--panel-2);border:1px solid var(--ring);color:var(--txt);padding:10px 12px;border-radius:12px;max-height:140px;outline:none;resize:vertical}
-    .clip,.send{ height:44px; display:inline-flex; align-items:center }
-    .send{background:var(--accent);border:0;color:#06372f;font-weight:700;padding:10px 14px;border-radius:12px;cursor:pointer;transition:.15s}
-    .send:hover{background:var(--accent-2)}
-    .clip{background:var(--panel-2);border:1px solid var(--ring);border-radius:12px;padding:10px 12px;cursor:pointer}
-    .clip:hover{filter:brightness(1.05)}
-    @media (max-width:900px){
-      .app{grid-template-columns:1fr}
-      .left{position:fixed;inset:0 30% 0 0;transform:translateX(-100%);transition:.2s;z-index:5}
-      .app.show-left .left{transform:none}
-      .app.show-left::before{content:"";position:fixed;inset:0;background:rgba(0,0,0,.35);backdrop-filter:blur(1px);z-index:4}
-      .msgs{padding-bottom:84px}
-    }
-  </style>
+  <title>Inbox — Greenfield</title>
+  <link rel="stylesheet" href="./agent.css">
+  <!-- Config “de marca” para el front (puedes cambiar sin tocar el JS) -->
+  <meta name="brand:name" content="Greenfield Agroquímicos">
+  <meta name="brand:qr" content="/qr-pagos.png">
 </head>
 <body>
-<div class="app" id="app">
-  <div class="left">
-    <div class="top">
-      <input id="search" placeholder="Buscar...">
-      <button class="btn sm" id="refresh" title="Refrescar (Sheets)">⟳</button>
-      <button class="btn sm" id="importWA" title="Importar WhatsApp (Sheets)">📥 Importar WA</button>
-      <button class="btn sm" id="logout" title="Salir">Salir</button>
+  <div class="app" id="app">
+    <div class="left">
+      <div class="top">
+        <input id="search" placeholder="Buscar...">
+        <button class="btn sm" id="refresh" title="Refrescar (Sheets)">⟳</button>
+        <button class="btn sm" id="importWA" title="Importar WhatsApp (Sheets)">📥 Importar WA</button>
+        <button class="btn sm" id="logout" title="Salir">Salir</button>
+      </div>
+      <div class="list" id="list"></div>
     </div>
-    <div class="list" id="list"></div>
+
+    <div class="right">
+      <div class="top">
+        <button class="btn sm" id="toggleLeft" title="Chats">☰</button>
+        <div id="title">Inbox</div>
+        <span id="conn" class="pill" title="Estado de conexión" aria-live="polite">…</span>
+        <span id="status" class="pill" style="display:none"></span>
+        <div class="row">
+          <button class="btn sm" id="takeHuman">⏸️ Pausar bot</button>
+          <button class="btn sm" id="resumeBot">▶️ Bot ON</button>
+          <button class="btn sm" id="markRead">✓ Leído</button>
+          <button class="btn sm" id="requestInfo">📋 Solicitar datos</button>
+          <button class="btn sm" id="sendQR">QR</button>
+          <button class="btn sm" id="sendAccounts">CUENTAS</button>
+        </div>
+      </div>
+
+      <div class="chat">
+        <div class="msgs" id="msgs"></div>
+
+        <div class="input" id="dropZone">
+          <textarea id="box" placeholder="Escribe como asesor... (Enter envía, Shift+Enter salto)"></textarea>
+          <label class="clip" for="fileInput" title="Adjuntar archivos" aria-label="Adjuntar archivos">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 3l-4 4h3v6h2V7h3l-4-4z" fill="currentColor"/>
+              <path d="M5 19a2 2 0 002 2h10a2 2 0 002-2v-5h-2v5H7v-5H5v5z" fill="currentColor"/>
+            </svg>
+          </label>
+          <input id="fileInput" type="file" multiple style="display:none"
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,image/*,video/*,audio/*">
+          <button class="send" id="send">Enviar</button>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <div class="right">
-    <div class="top">
-      <button class="btn sm" id="toggleLeft" title="Chats">☰</button>
-      <div id="title" style="font-weight:700">Inbox</div>
-      <span id="status" class="pill" style="margin-left:auto;display:none"></span>
-      <div class="row">
-        <button class="btn sm" id="takeHuman">⏸️ Pausar bot</button>
-        <button class="btn sm" id="resumeBot">▶️ Bot ON</button>
-        <button class="btn sm" id="markRead">✓ Leído</button>
-        <button class="btn sm" id="requestInfo">📋 Solicitar datos</button>
-        <button class="btn sm" id="sendQR">QR</button>
-        <button class="btn sm" id="sendAccounts">CUENTAS</button>
-      </div>
-    </div>
-
-    <div class="chat">
-      <div class="msgs" id="msgs"></div>
-      <div class="input">
-        <textarea id="box" placeholder="Escribe como asesor... (Enter envía, Shift+Enter salto)"></textarea>
-        <label class="clip" for="fileInput" title="Adjuntar archivos" aria-label="Adjuntar archivos">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M12 3l-4 4h3v6h2V7h3l-4-4z" fill="currentColor"/>
-            <path d="M5 19a2 2 0 002 2h10a2 2 0 002-2v-5h-2v5H7v-5H5v5z" fill="currentColor"/>
-          </svg>
-        </label>
-        <input id="fileInput" type="file" multiple style="display:none"
-          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,image/*,video/*,audio/*">
-        <button class="send" id="send">Enviar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-const TOKEN_TTL_MS = 24 * 60 * 60 * 1000; 
-let sse = null; 
-async function requestToken(force = false){
-  if (!force && api.token) return true;
-  while (true){
-    const t = prompt('Token de agente'); 
-    if (!t) { alert('Se requiere token para continuar.'); return false; }
-    api.token   = t.trim();
-    api.tokenAt = Date.now();
-    try{
-      const r = await fetch('/wa/agent/convos', { headers: { 'Authorization':'Bearer '+api.token }});
-      if (r.status === 401){ alert('Token inválido. Intenta de nuevo.'); api.token=''; continue; }
-      if (!r.ok){ alert('No pude validar el token. Reintenta.'); api.token=''; continue; }
-      startSSE(); return true;
-    }catch{ alert('Error de red validando token. Reintenta.'); api.token=''; }
-  }
-}
-function startSSE(){
-  try{ if (sse) sse.close(); }catch{}
-  if (!api.token) return;
-  sse = new EventSource('/wa/agent/stream?token=' + encodeURIComponent(api.token));
-  sse.addEventListener('msg', (ev)=>{
-    const data = JSON.parse(ev.data||'{}');
-    const msgId = normId(data.id);
-    if(current && sameId(msgId,current.id)){
-      current.memory = (current.memory||[]).concat([{role:data.role, content:data.content, ts:data.ts}]);
-      renderMsgs(current.memory);
-    }
-    refresh(false);
-  });
-}
-async function forceReauth(){
-  try{ if (sse) sse.close(); }catch{}
-  api.token = ''; api.tokenAt = 0;
-  alert('Tu sesión de agente caducó. Ingresa el token nuevamente.');
-  const ok = await requestToken(true);
-  if (ok){ await refresh(true); }
-}
-const api = {
-  token: '', tokenAt: 0,
-  headers(){ return { 'Authorization':'Bearer '+this.token, 'Content-Type':'application/json' }; },
-  isExpired(){ return !this.tokenAt || (Date.now() - this.tokenAt) > TOKEN_TTL_MS; },
-  async convos(){ const r = await fetch('/wa/agent/convos',{headers:this.headers()});
-    if (r.status===401){ await forceReauth(); return this.convos(); } if (!r.ok) throw 0; return r.json(); },
-  async history(id){ const r = await fetch('/wa/agent/history/'+encodeURIComponent(id),{headers:this.headers()});
-    if (r.status===401){ await forceReauth(); return this.history(id); } if (!r.ok) throw 0; return r.json(); },
-  async send(to,text){ const r = await fetch('/wa/agent/send',{method:'POST',headers:this.headers(),body:JSON.stringify({to,text})});
-    if (r.status===401){ await forceReauth(); return this.send(to,text); } if (!r.ok) throw 0; return r.json(); },
-  async read(to){ const r = await fetch('/wa/agent/read',{method:'POST',headers:this.headers(),body:JSON.stringify({to})});
-    if (r.status===401){ await forceReauth(); return this.read(to); } if (!r.ok) throw 0; return r.json(); },
-  async handoff(to,mode){ const r = await fetch('/wa/agent/handoff',{method:'POST',headers:this.headers(),body:JSON.stringify({to,mode})});
-    if (r.status===401){ await forceReauth(); return this.handoff(to,mode); } if (!r.ok) throw 0; return r.json(); },
-  async sendMedia(to, files, caption=''){
-    const fd = new FormData(); fd.append('to', to); fd.append('caption', caption);
-    for (const f of files) fd.append('files', f, f.name);
-    const r = await fetch('/wa/agent/send-media', { method:'POST', headers:{ 'Authorization':'Bearer '+this.token }, body: fd });
-    if (r.status===401){ await forceReauth(); return this.sendMedia(to, files, caption); }
-    if (!r.ok) throw 0; return r.json();
-  }
-};
-/* ====== App ====== */
-const app = document.getElementById('app');
-const elList = document.getElementById('list');
-const elMsgs = document.getElementById('msgs');
-const elTitle= document.getElementById('title');
-const elStatus= document.getElementById('status');
-const box = document.getElementById('box');
-
-let current = null;
-let allConvos = [];
-let openLock = false;
-
-const normId = v => String(v ?? '');
-const sameId = (a,b)=> normId(a) === normId(b);
-function looksLikeMediaLine(t=''){ return /^([🖼️🎬🎧📎])/.test(String(t).trim()); }
-
-function renderList(filter=''){
-  elList.innerHTML=''; const q = (filter||'').toLowerCase();
-  for(const c0 of (allConvos||[])){
-    const c = {...c0, id: normId(c0.id)};
-    if(q && !String(c.name||'').toLowerCase().includes(q) && !c.id.includes(q)) continue;
-    const row = document.createElement('div');
-    const isActive = current && sameId(c.id, current.id);
-    row.className = 'item'+(isActive?' active':'' ); row.onclick = ()=> openChat(c.id);
-    const last = String(c.last||'').replace(/\n/g,' · ');
-    row.innerHTML = `
-      <div>
-        <div class="name">${c.name||c.id}</div>
-        <div class="sub">${last.slice(0,90)}</div>
-      </div>
-      <div style="display:flex;gap:6px;align-items:center">
-        ${c.human?'<span class="pill human">HUMANO</span>':''}
-        ${c.unread?`<span class="pill">${c.unread}</span>`:''}
-      </div>`;
-    elList.appendChild(row);
-  }
-}
-async function refresh(openFirstIfNeeded=false){
-  try{
-    const {convos} = await api.convos();
-    allConvos = (convos||[]).map(c=>({...c,id:normId(c.id)}));
-    renderList(document.getElementById('search').value);
-    if(openFirstIfNeeded && !current && allConvos.length){
-      const last = sessionStorage.getItem('lastChatId');
-      const fallback = last && allConvos.find(c=>sameId(c.id,last)) ? last : allConvos[0].id;
-      openChat(fallback);
-    }
-  }catch(e){ /* noop */ }
-}
-function renderMsgs(mem){
-  elMsgs.innerHTML = '';
-  for(const m of (mem||[])){
-    const div = document.createElement('div');
-    let cls='bubble sys';
-    if(m.role==='user') cls='bubble u';
-    else if(m.role==='bot') cls='bubble b';
-    else if(m.role==='agent') cls='bubble a';
-    div.className = cls;
-    const txt = m.content ?? '';
-    if (looksLikeMediaLine(txt)) div.innerHTML = `<strong>${txt.slice(0,2)}</strong> ${txt.slice(2)}`;
-    else div.textContent = txt;
-    elMsgs.appendChild(div);
-  }
-  elMsgs.scrollTop = elMsgs.scrollHeight;
-}
-async function openChat(id){
-  if(openLock) return; openLock = true;
-  try{
-    const res = await api.history(normId(id));
-    current = {...res, id:normId(res.id)};
-    elTitle.textContent = `${current.name||current.id} (${current.id})`;
-    elStatus.style.display = current.human ? 'inline-block' : 'none';
-    elStatus.textContent = current.human ? 'HUMANO' : '';
-    renderMsgs(current.memory||[]);
-    sessionStorage.setItem('lastChatId', current.id);
-    api.read(current.id).catch(()=>{});
-    refresh(false);
-    if (window.innerWidth<900) app.classList.remove('show-left');
-  }catch(e){
-    elTitle.textContent = normId(id);
-    elStatus.style.display='none';
-  }finally{ openLock = false; }
-}
-
-// Botón Importar WA (tras bootstrap y junto a los otros onClick)
-document.getElementById('importWA').onclick = async ()=>{
-  try{
-    const r = await fetch('/wa/agent/import-whatsapp', {
-      method: 'POST',
-      headers: api.headers(),
-      body: JSON.stringify({ days: 3650 }) // leer todo
-    });
-    if (r.status === 401){ await forceReauth(); return document.getElementById('importWA').click(); }
-    const j = await r.json();
-    if (!r.ok) throw new Error(j?.error || 'Error');
-
-    alert(`Listo. Importados ${j.imported} chats.`);
-    await refresh(true);                  // ← clave: recargar y abrir el primero
-    if (window.innerWidth < 900) {        // en móvil, mostrar la columna izquierda
-      app.classList.add('show-left');
-    }
-  }catch(e){
-    alert('No se pudo importar desde Sheets.');
-  }
-};
-
-
-document.getElementById('send').onclick = async ()=>{
-  const txt = box.value.trim(); if(!txt || !current) return;
-  box.value=''; await api.send(current.id, txt);
-};
-box.addEventListener('keydown', (e)=>{
-  if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); document.getElementById('send').click(); }
-});
-document.getElementById('markRead').onclick = async ()=>{ if(!current) return; await api.read(current.id); refresh(false); };
-document.getElementById('takeHuman').onclick = async ()=>{ if(!current) return; await api.handoff(current.id,'human'); elStatus.style.display='inline-block'; elStatus.textContent='HUMANO'; };
-document.getElementById('resumeBot').onclick = async ()=>{ if(!current) return; await api.handoff(current.id,'bot'); elStatus.style.display='none'; };
-
-document.getElementById('refresh').onclick = ()=>refresh(true);
-document.getElementById('logout').onclick = ()=>{ try{ if (sse) sse.close(); }catch{} api.token=''; api.tokenAt=0; location.reload(); };
-document.getElementById('search').oninput = (e)=> renderList(e.target.value);
-document.getElementById('toggleLeft').onclick = ()=> app.classList.toggle('show-left');
-
-const fileInput = document.getElementById('fileInput');
-fileInput.onchange = async (e)=>{
-  const files = Array.from(e.target.files||[]);
-  if(!files.length || !current) return;
-  try{ await api.sendMedia(current.id, files, ''); }
-  catch{ alert('Error subiendo archivo(s).'); }
-  e.target.value = '';
-};
-
-/* =================== Solicitar datos =================== */
-function buildRequestMessages(){
-  const nombre = (current && current.name) ? current.name.trim() : 'cliente';
-  const part1 = [
-    `${nombre}, ¡gracias por su compra y confianza en New Chem! 😊`,
-    `Para *emitir su factura* y coordinar la fecha de entrega, por favor responda a este mensaje con los siguientes datos`,
-    `Te recordamos que la facturación debe emitirse al mismo nombre de la persona que realizó el pago.`,
-    `¡Quedamos atentos y a su disposición para cualquier consulta!`
-  ].join('\n');
-  const part2 = [
-    `*FACTURACIÓN*`,
-    `• Razón social:`,
-    `• NIT:`,
-    ``,
-    `*ORDEN DE ENTREGA*`,
-    `• Nombre del cliente: ${nombre}`,
-    `• Nombre del chofer:`,
-    `• Carnet de Identidad:`,
-    `• Placa del vehículo:`,
-    `• Fecha de recojo (dd/mm/aaaa):`
-  ].join('\n');
-  return { part1, part2 };
-}
-document.getElementById('requestInfo').onclick = async ()=>{
-  if(!current) return;
-  const { part1, part2 } = buildRequestMessages();
-  await api.send(current.id, part1);
-  await api.send(current.id, part2);
-};
-
-/* =================== Botón QR =================== */
-document.getElementById('sendQR').onclick = async ()=>{
-  if(!current) return;
-  const QR_URLS = ['/qr-pagos.png', '/public/qr-pagos.png'];
-  let blob = null, mime = 'image/png';
-  for (const u of QR_URLS){
-    try{ const r = await fetch(u); if (r.ok){ blob = await r.blob(); mime = blob.type || mime; break; } }catch{}
-  }
-  if(!blob){ alert('No encontré el archivo QR en /qr-pagos.png'); return; }
-  const file = new File([blob], 'qr-pagos.png', { type: mime });
-  await api.sendMedia(current.id, [file], '');
-};
-/* =================== Botón CUENTAS =================== */
-document.getElementById('sendAccounts').onclick = async ()=>{
-  if(!current) return;
-  const cuentasMsg = [
-    '*Titular:* New Chem Agroquímicos SRL',
-    '*Moneda:* Bolivianos',
-    '',
-    '*BCP*',
-    '*Cuenta Corriente:* 701-5096500-3-34',
-    '',
-    '*BANCO UNIÓN*',
-    '*Cuenta Corriente:* 10000047057563',
-    '',
-    '*BANCO SOL*',
-    '*Cuenta Corriente:* 2784368-000-001'
-  ].join('\n');
-  await api.send(current.id, cuentasMsg);
-};
-
-/* =================== Bootstrap =================== */
-(async function bootstrap(){
-  const ok = await requestToken(true);
-  if (!ok) return;
-  await refresh(true);
-  setInterval(()=>{ if (api.isExpired()) forceReauth(); }, 60*1000);
-})();
-</script>
+  <script src="./agent.js" defer></script>
 </body>
 </html>
