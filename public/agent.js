@@ -18,7 +18,6 @@ const viewChat   = document.getElementById('view-chat');
 const threadList = document.getElementById('threadList');
 const msgCount   = document.getElementById('msgCount');
 const elConn     = document.getElementById('conn');
-const statusPill = document.getElementById('status');
 const backBtn    = document.getElementById('backBtn');
 const chatName   = document.getElementById('chatName');
 const chatMeta   = document.getElementById('chatMeta');
@@ -33,6 +32,7 @@ const logoutBtn  = document.getElementById('logout');
 const searchEl   = document.getElementById('search');
 const segBtns    = Array.from(document.querySelectorAll('.segmented .seg'));
 const attachBtn  = document.getElementById('attachBtn');
+const enablePushBtn = document.getElementById('enablePush');
 
 // ===== Estado =====
 let current = null;
@@ -223,7 +223,7 @@ async function openChat(id){
     current = {...res, id:normId(res.id)};
     chatName.textContent = current.name || current.id;
     chatMeta.textContent = current.phone ? current.phone : current.id;
-    statusPill.style.display = current.human ? 'inline-block' : 'none';
+    document.getElementById('status').style.display = current.human ? 'inline-block' : 'none';
     renderMsgs(current.memory||[]);
     await api.read(current.id).catch(()=>{});
 
@@ -235,7 +235,7 @@ async function openChat(id){
 }
 backBtn?.addEventListener('click', ()=>{ current=null; viewChat.classList.remove('active'); viewList.classList.add('active'); });
 
-/* Acciones */
+/* Acciones rápidas */
 document.getElementById('requestInfo').onclick = async ()=>{
   if (!current) return;
   const nombre = current.name?.trim() || 'cliente';
@@ -264,18 +264,27 @@ document.getElementById('sendQR').onclick = async ()=>{
 };
 document.getElementById('sendAccounts').onclick = async ()=>{ if (!current) return; await api.send(current.id, ACCOUNTS_TEXT); };
 document.getElementById('markRead').onclick  = async ()=>{ if(!current) return; await api.read(current.id); refresh(false); };
-document.getElementById('takeHuman').onclick = async ()=>{ if(!current) return; await api.handoff(current.id,'human'); statusPill.style.display='inline-block'; };
-document.getElementById('resumeBot').onclick = async ()=>{ if(!current) return; await api.handoff(current.id,'bot'); statusPill.style.display='none'; };
+document.getElementById('takeHuman').onclick = async ()=>{ if(!current) return; await api.handoff(current.id,'human'); document.getElementById('status').style.display='inline-block'; };
+document.getElementById('resumeBot').onclick = async ()=>{ if(!current) return; await api.handoff(current.id,'bot'); document.getElementById('status').style.display='none'; };
 
 sendBtn.onclick = async ()=>{ const txt = box.value.trim(); if(!txt || !current) return; box.value=''; await api.send(current.id, txt); };
 box.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendBtn.click(); } });
 
 attachBtn.onclick = ()=> fileInput.click();
-fileInput.onchange = async (e)=>{ const files = Array.from(e.target.files||[]); if(!files.length || !current) return; try{ await api.sendMedia(current.id, files, ''); } catch{ alert('Error subiendo archivo(s).'); } e.target.value=''; };
+fileInput.onchange = async (e)=>{
+  const files = Array.from(e.target.files||[]);
+  if(!files.length || !current) return;
+  try{ await api.sendMedia(current.id, files, ''); } catch{ alert('Error subiendo archivo(s).'); }
+  e.target.value='';
+};
 
 ['dragenter','dragover'].forEach(ev=> dropZone.addEventListener(ev, e=>{ e.preventDefault(); e.stopPropagation(); dropZone.classList.add('drag'); }));
 ['dragleave','drop'].forEach(ev=> dropZone.addEventListener(ev, e=>{ e.preventDefault(); e.stopPropagation(); dropZone.classList.remove('drag'); }));
-dropZone.addEventListener('drop', async (e)=>{ const files = Array.from(e.dataTransfer?.files||[]); if (!files.length || !current) return; try{ await api.sendMedia(current.id, files, ''); } catch{ alert('Error subiendo archivo(s).'); } });
+dropZone.addEventListener('drop', async (e)=>{
+  const files = Array.from(e.dataTransfer?.files||[]);
+  if (!files.length || !current) return;
+  try{ await api.sendMedia(current.id, files, ''); } catch{ alert('Error subiendo archivo(s).'); }
+});
 
 /* Filtros */
 function renderList(){ renderThreads(); }
@@ -294,40 +303,54 @@ async function refresh(openFirst=false){
   }catch{}
 }
 
-/* Bootstrap */
-(async function(){
-  const ok = await requestToken(false);
-  if (!ok) return;
-  await refresh(true);
-  setInterval(()=>{ if (api.isExpired()) forceReauth(); }, 60*1000);
-  startSSE();
-  // Web Push (PWA instalado)
-  try{ await maybeEnablePush(); }catch{}
-})();
-
-/* PWA + Push */
+/* ===== PWA + Service Worker ===== */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(()=>{});
   });
 }
+
+/* ===== Push: botón visible y flujo robusto ===== */
 async function maybeEnablePush(){
-  if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
-  // solo pedir si el usuario hace click en "⟳" o import, para cumplir gesto del usuario (o descomenta para auto-preguntar)
-  refreshBtn.addEventListener('click', requestPush, { once:true });
+  const canBasics = ('Notification' in window) && ('serviceWorker' in navigator) && ('PushManager' in window);
+  if (enablePushBtn) {
+    enablePushBtn.style.display = canBasics ? 'inline-block' : 'none';
+    if (canBasics) enablePushBtn.addEventListener('click', requestPush, { once:false });
+  }
 }
+
 async function requestPush(){
-  const perm = await Notification.requestPermission();
-  if (perm !== 'granted') return;
-  const reg = await navigator.serviceWorker.ready;
-  // Reemplaza por tu clave pública VAPID
-  const vapidPublicKey = (window.PUSH_VAPID || 'BEl0...TU_CLAVE...xQ'); 
-  const sub = await reg.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
-  });
-  await fetch('/push/subscribe', { method:'POST', headers: api.headers(), body: JSON.stringify(sub) });
+  try{
+    if (!('Notification' in window)) { alert('Este navegador no soporta Notificaciones.'); return; }
+    if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+      alert('Se requiere HTTPS para activar notificaciones.');
+      return;
+    }
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    if (isIOS && !isStandalone) {
+      alert('En iPhone, primero “Añadir a pantalla de inicio” y abrir desde el ícono para activar notificaciones.');
+      return;
+    }
+
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') { alert('Notificaciones no habilitadas.'); return; }
+
+    const reg = await navigator.serviceWorker.ready;
+    const vapidPublicKey = (window.PUSH_VAPID || 'BEl0...TU_CLAVE...xQ');
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+    });
+
+    await fetch('/push/subscribe', { method:'POST', headers: api.headers(), body: JSON.stringify(sub) });
+    alert('✅ Notificaciones activadas.');
+  } catch (err) {
+    console.error('requestPush error', err);
+    alert('No pude activar notificaciones en este dispositivo.');
+  }
 }
+
 function urlBase64ToUint8Array(base64String){
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -340,3 +363,13 @@ function urlBase64ToUint8Array(base64String){
 /* Conectividad */
 window.addEventListener('offline', ()=> setConn('off','sin red'));
 window.addEventListener('online',  ()=> { setConn('wait','reconectando'); startSSE(); });
+
+/* ===== Bootstrap ===== */
+(async function(){
+  const ok = await requestToken(false);
+  if (!ok) return;
+  await refresh(true);
+  setInterval(()=>{ if (api.isExpired()) forceReauth(); }, 60*1000);
+  startSSE();
+  try{ await maybeEnablePush(); }catch{}
+})();

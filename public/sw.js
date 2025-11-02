@@ -1,4 +1,4 @@
-const CACHE = 'inbox-greenfield-v5';
+const CACHE = 'inbox-greenfield-v6'; // bump cache to force refresh
 const APP_SHELL = [
   './agent.html',
   './agent.css',
@@ -11,6 +11,7 @@ self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(APP_SHELL)));
   self.skipWaiting();
 });
+
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
