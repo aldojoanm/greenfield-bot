@@ -6,21 +6,21 @@
   <title>Inbox — Greenfield</title>
 
   <!-- Estilos -->
-  <link rel="stylesheet" href="/public/agent.css">
+  <link rel="stylesheet" href="./agent.css">
 
-  <!-- Config de marca (editable sin tocar JS) -->
+  <!-- Config de marca -->
   <meta name="brand:name" content="Greenfield Agroquímicos">
-  <meta name="brand:qr" content="/qr-pagos.png">
+  <meta name="brand:qr" content="./qr-pagos.png">
 
-  <!-- PWA -->
-  <link rel="manifest" href="/public/manifest.webmanifest">
+  <!-- PWA en el mismo directorio -->
+  <link rel="manifest" href="./manifest.webmanifest">
   <meta name="theme-color" content="#00a884">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="apple-touch-icon" href="/public/greenfield-logo.png">
+  <link rel="apple-touch-icon" href="./greenfield-logo.png">
 </head>
 <body>
-  <!-- App: Vista lista -->
+  <!-- LISTA -->
   <section id="view-list" class="view active">
     <header class="topbar">
       <h1>Inbox</h1>
@@ -37,18 +37,19 @@
           <button class="seg" data-filter="agent">Asesor</button>
         </div>
       </div>
+
       <div class="searchbar">
         <input id="search" placeholder="Buscar…">
         <button class="btn" id="importWA" title="Importar WhatsApp (Sheets)">📥</button>
-        <button class="btn" id="refresh" title="Refrescar">⟳</button>
-        <button class="btn" id="logout" title="Salir">Salir</button>
+        <button class="btn" id="refresh"  title="Refrescar">⟳</button>
+        <button class="btn" id="logout"   title="Salir">Salir</button>
       </div>
     </div>
 
     <div id="threadList" class="threads"></div>
   </section>
 
-  <!-- App: Vista chat -->
+  <!-- CHAT -->
   <section id="view-chat" class="view">
     <header class="chatbar">
       <button id="backBtn" class="icon-btn" aria-label="Volver">←</button>
@@ -71,7 +72,7 @@
       <textarea id="box" placeholder="Escribe un mensaje…"></textarea>
       <button id="send" class="icon-btn send" aria-label="Enviar">➤</button>
 
-      <!-- Hoja de acciones -->
+      <!-- Sheet de acciones -->
       <div id="sheet" class="sheet">
         <button class="sheet-item" id="takeHuman">⏸️ Pausar bot</button>
         <button class="sheet-item" id="resumeBot">▶️ Bot ON</button>
@@ -84,6 +85,6 @@
     </footer>
   </section>
 
-  <script src="/public/agent.js" defer></script>
+  <script src="./agent.js" defer></script>
 </body>
 </html>

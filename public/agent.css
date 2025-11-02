@@ -5,7 +5,7 @@
 }
 *{box-sizing:border-box}
 html,body{height:100%}
-body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.4 system-ui,Segoe UI,Roboto,Ubuntu,Arial}
+body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.4 system-ui,Segoe UI,Roboto,Ubuntu,Arial}
 .view{display:none;height:100dvh}
 .view.active{display:flex;flex-direction:column}
 
@@ -14,7 +14,7 @@ body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.4 system-ui,Sego
   display:flex; align-items:center; gap:12px;
   padding:12px 14px; border-bottom:1px solid var(--stroke); background:var(--panel);
 }
-.topbar h1{margin:0; font-size:18px; font-weight:800}
+.topbar h1{margin:0; font-size:20px; font-weight:800}
 .pill{background:#233138;color:#cdd6da;font-size:11px;border-radius:999px;padding:4px 8px}
 
 /* Filters / Search */
@@ -31,7 +31,7 @@ body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.4 system-ui,Sego
   padding:10px 12px;border-radius:12px;cursor:pointer;transition:.15s}
 .btn:hover{filter:brightness(1.05)}
 
-/* Thread list (Messenger style) */
+/* Threads */
 .threads{flex:1; overflow:auto}
 .threads::-webkit-scrollbar{width:10px}
 .threads::-webkit-scrollbar-thumb{background:#22323a;border-radius:8px}
@@ -50,7 +50,7 @@ body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.4 system-ui,Sego
 .t-name{font-weight:700; max-width:70%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .t-time{color:var(--muted); font-size:12px; white-space:nowrap}
 .t-row2{display:flex; gap:8px; align-items:center}
-.t-last{color:var(--muted); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:78vw}
+.t-last{color:var(--muted); font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:78vw}
 .dot{width:10px; height:10px; border-radius:50%}
 .dot.unread{background:#2ea0ff}
 .dot.done{background:#7a8691}
@@ -97,7 +97,6 @@ body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.4 system-ui,Sego
 .icon-btn.send{background:var(--accent); color:#06372f; font-weight:800}
 .icon-btn.send:active{transform:translateY(1px)}
 
-/* Action sheet */
 .sheet{
   position:fixed; left:0; right:0; bottom:-100%; background:var(--panel);
   border-top:1px solid var(--stroke); box-shadow:0 -10px 30px rgba(0,0,0,.35);
@@ -110,11 +109,10 @@ body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.4 system-ui,Sego
 }
 .sheet-item.alt{background:#1a2630}
 
-/* Drag highlight */
 #dropZone.drag{outline:2px dashed #2aa57a; outline-offset:6px; border-radius:12px}
 
-/* Desktop tweaks */
+/* Desktop ancho centrado */
 @media (min-width:900px){
-  .view{max-width:920px; margin:0 auto}
+  .view{max-width:900px; margin:0 auto}
   .t-last{max-width:540px}
 }
