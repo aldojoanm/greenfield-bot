@@ -1,4 +1,4 @@
-const CACHE = 'inbox-greenfield-v5';
+const CACHE = 'inbox-greenfield-v6';
 const APP_SHELL = [
   './agent.html',
   './agent.css',
@@ -20,8 +20,7 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
-  // No cachear SSE
-  if (req.headers.get('accept')?.includes('text/event-stream')) return;
+  if (req.headers.get('accept')?.includes('text/event-stream')) return; // no cachear SSE
 
   const url = new URL(req.url);
   const isShell = url.pathname.endsWith('/agent.html') || APP_SHELL.some(p => url.pathname.endsWith(p.replace('./','/')));

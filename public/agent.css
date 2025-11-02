@@ -28,7 +28,7 @@ body {
   background: var(--bg);
   color: var(--ink);
   font: 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-  overscroll-behavior-y: none; /* ayuda al swipe/back en iOS */
+  overscroll-behavior-y: none;
 }
 
 /* Contenedor raíz */
@@ -40,7 +40,7 @@ body {
 /* Utilidades */
 .only-mobile { display: none; }
 .only-desktop { display: inline; }
-.safe-top { padding-top: var(--topbar-h); } /* porque la topbar es fija en desktop */
+.safe-top { padding-top: var(--topbar-h); }
 
 .pill {
   display: inline-block;
@@ -51,8 +51,7 @@ body {
   font-weight: 700;
 }
 
-.btn,
-.icon-btn {
+.btn, .icon-btn {
   background: var(--panel-2);
   color: var(--ink);
   border: 1px solid rgba(255,255,255,.08);
@@ -63,10 +62,10 @@ body {
 }
 
 /* =========================
-   TOPBAR (UNA LÍNEA, FULL WIDTH)
+   TOPBAR
    ========================= */
 .topbar {
-  position: fixed; /* ocupa todo el ancho en desktop */
+  position: fixed;
   inset: 0 0 auto 0;
   height: var(--topbar-h);
   z-index: 50;
@@ -85,17 +84,12 @@ body {
   background: transparent;
 }
 .filters-row {
-  display: flex;
-  align-items: center;
-  gap: .75rem;
-  flex-wrap: wrap;
+  display: flex; align-items: center; gap: .75rem; flex-wrap: wrap;
 }
 .count { color: var(--muted); }
 
 .segmented {
-  display: flex;
-  gap: .5rem;
-  flex-wrap: wrap;          /* que no se corte */
+  display: flex; gap: .5rem; flex-wrap: wrap;
   min-width: min(100%, 720px);
 }
 .seg {
@@ -110,11 +104,7 @@ body {
 .seg.active { background: var(--ok-bg); color: var(--ok-ink); border-color: #093; }
 
 .searchbar {
-  display: flex;
-  align-items: center;
-  gap: .5rem;
-  margin-top: .5rem;
-  flex-wrap: wrap;
+  display: flex; align-items: center; gap: .5rem; margin-top: .5rem; flex-wrap: wrap;
 }
 .searchbar input {
   background: var(--panel);
@@ -122,16 +112,15 @@ body {
   color: var(--ink);
   padding: .35rem .6rem;
   border-radius: 6px;
-  min-width: 220px;
-  flex: 1 1 220px;
+  min-width: 220px; flex: 1 1 220px;
 }
 
 /* =========================
-   LAYOUT DE VISTAS
+   LAYOUT
    ========================= */
 .view { height: auto; }
 
-/* Lista de hilos */
+/* Lista */
 .threads { display: flex; flex-direction: column; }
 .thread {
   display: grid;
@@ -164,41 +153,37 @@ body {
 /* =========================
    CHAT
    ========================= */
+.view-chat {
+  /* Layout flexible: header + (opcional fila acciones) + msgs flex + composer abajo */
+  display: flex;
+  flex-direction: column;
+}
+
 .chatbar {
   display: flex; align-items: center; gap: .75rem;
   padding: .6rem .75rem;
   border-bottom: 1px solid rgba(255,255,255,.06);
   background: var(--panel);
+  z-index: 3;
 }
 .chat-title { display: flex; flex-direction: column; gap: .25rem; }
 .name { font-weight: 700; }
 .meta { color: var(--muted); font-size: 12px; }
 
-/* Barra de opciones (sheet): fila bajo el número en DESKTOP; modal en MOBILE */
-.sheet {
-  display: none;
-}
+/* Acciones */
+.sheet { display: none; }
 .sheet-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: .5rem;
+  display: flex; flex-wrap: wrap; gap: .5rem;
   padding: .5rem .75rem;
   border-bottom: 1px solid rgba(255,255,255,.06);
   background: transparent;
 }
-.sheet .sheet-item,
-.sheet-row .sheet-item {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 34px;
-  padding: .35rem .6rem;
-  margin: 0;
+.sheet .sheet-item, .sheet-row .sheet-item {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 34px; padding: .35rem .6rem; margin: 0;
   border: 1px solid rgba(255,255,255,.12);
-  background: var(--panel-2);
-  color: var(--ink);
-  border-radius: 999px;
-  cursor: pointer;
+  background: var(--panel-2); color: var(--ink);
+  border-radius: 999px; cursor: pointer;
 }
 .sheet .sheet-item + .sheet-item,
 .sheet-row .sheet-item + .sheet-item { margin-left: .5rem; }
@@ -207,15 +192,14 @@ body {
 /* Mensajes */
 .msgs {
   padding: .75rem;
-  display: flex;
-  flex-direction: column;
-  gap: .5rem;
+  display: flex; flex-direction: column; gap: .5rem;
   overflow: auto;
   background: transparent;
   min-height: 200px;
+  flex: 1 1 auto;          /* ocupa todo el espacio disponible */
 }
 
-/* Globos de mensajes – más cortos y con wrap seguro */
+/* Globos */
 .bubble {
   max-width: min(65ch, 72%);
   padding: .5rem .65rem;
@@ -242,12 +226,10 @@ body {
 #box {
   width: 100%;
   resize: none;
-  min-height: 42px;
-  max-height: 180px;
+  min-height: 42px; max-height: 180px;
   padding: .5rem .6rem;
   border-radius: 8px;
-  background: var(--bg);
-  color: var(--ink);
+  background: var(--bg); color: var(--ink);
   border: 1px solid rgba(255,255,255,.08);
 }
 #attachBtn, #send { min-width: 42px; height: 42px; display: grid; place-items: center; }
@@ -260,7 +242,6 @@ body {
    DESKTOP (>=1024px)
    ========================= */
 @media (min-width: 1024px) {
-  /* Estructura: topbar fija + dos columnas lado a lado */
   .app {
     display: grid;
     grid-template-columns: 380px 1fr;    /* lista + chat */
@@ -268,44 +249,27 @@ body {
     column-gap: 0;
   }
 
-  /* Ambas vistas visibles; compensar topbar fija */
   .view {
     display: block;
     height: calc(100dvh - var(--topbar-h));
-    overflow: auto;
+    overflow: hidden; /* el scroll ocurre dentro de .msgs */
   }
 
-  /* La barra del chat (cabecera) pegada arriba del panel de chat */
-  .view-chat .chatbar {
-    position: sticky;
-    top: 0;
-    z-index: 3;
-  }
+  /* Cabecera pegada arriba del panel de chat */
+  .view-chat .chatbar { position: sticky; top: 0; }
 
-  /* Fila de acciones DEBAJO del nombre/número */
+  /* Fila de acciones visible */
   .sheet-row { display: flex; }
-  .sheet { display: none !important; } /* el modal sólo móvil */
 
-  /* Ocultar botón + en desktop (porque ya hay fila visible) */
+  /* Ocultar “+” en desktop */
   #moreBtn { display: none; }
 
-  /* Mensajes ocupan el alto restante del panel de chat */
-  .view-chat .msgs {
-    height: calc(100dvh - var(--topbar-h) - var(--chatbar-h) - 44px /*sheet-row*/ - var(--composer-min-h) - 1px);
-    overflow: auto;
-  }
+  /* Mensajes scrolleables, composer al fondo sin huecos */
+  .view-chat .msgs { overflow: auto; }
+  .view-chat .composer { margin-top: auto; }
 
-  /* Composer pegado abajo del panel de chat */
-  .view-chat .composer {
-    position: sticky;
-    bottom: 0;
-    z-index: 2;
-    min-height: var(--composer-min-h);
-  }
-
-  /* Mostrar ambos paneles; no dependemos de .active en desktop */
-  .view-list.active,
-  .view-chat.active { display: block; }
+  /* DIVISORIO entre lista y chat */
+  .view-chat { border-left: 1px solid rgba(255,255,255,.10); }
 }
 
 /* =========================
@@ -315,31 +279,40 @@ body {
   .only-mobile { display: inline; }
   .only-desktop { display: none; }
 
-  /* En móvil, sólo una vista a la vez */
   .view { display: none; }
   .view.active { display: block; }
 
-  /* La topbar NO es fija a pantalla completa en móvil, pero si se fija dentro de lista/chat no invade la status bar */
-  .topbar {
-    position: static;
-    width: 100%;
-  }
+  /* La topbar va normal y no pisa status bar */
+  .topbar { position: static; width: 100%; }
   .safe-top { padding-top: 0; }
 
-  /* Chat: cabecera con safe-area para no tapar la hora */
+  /* Chat: cabecera con safe-area para no tapar hora/números */
   .view-chat .chatbar {
     position: sticky;
     top: 0;
-    z-index: 4;
-    background: var(--bg);
-    border-bottom: 1px solid rgba(255,255,255,.06);
     padding-top: calc(.3rem + var(--safe-top));
+    z-index: 4;
   }
 
-  /* Fila de acciones es un SHEET fijo al fondo (modal) */
-  .sheet {
+  /* Composer FIJO al borde inferior real (sin hueco) */
+  .view-chat .composer {
     position: fixed;
     left: 0; right: 0; bottom: 0;
+    z-index: 5;
+    padding-bottom: calc(.5rem + var(--safe-bottom));
+  }
+
+  /* Mensajes: dan scroll completo y dejan espacio al composer fijo */
+  .view-chat .msgs {
+    padding-bottom: calc(var(--composer-min-h) + var(--safe-bottom) + 16px);
+    max-height: none; /* sin tope que cree huecos */
+  }
+
+  /* Sheet modal por encima del composer fijo */
+  .sheet {
+    position: fixed;
+    left: 0; right: 0;
+    bottom: calc(var(--composer-min-h) + var(--safe-bottom) + 8px);
     z-index: 40;
     background: rgba(17,27,33,.98);
     border-top: 1px solid rgba(255,255,255,.08);
@@ -348,29 +321,10 @@ body {
   }
   .sheet.show { display: block; }
   .sheet .sheet-item {
-    display: block;
-    width: 100%;
-    text-align: left;
-    border-radius: 8px;
-    margin: 0 0 .5rem 0;
+    display: block; width: 100%; text-align: left;
+    border-radius: 8px; margin: 0 0 .5rem 0;
   }
   .sheet .sheet-item + .sheet-item { margin-left: 0; }
-
-  /* Composer fijo abajo SIEMPRE, respetando el notch/homebar */
-  .view-chat .composer {
-    position: sticky;
-    bottom: 0;
-    z-index: 4;
-    background: var(--bg);
-    border-top: 1px solid rgba(255,255,255,.06);
-    padding-bottom: calc(.5rem + var(--safe-bottom));
-  }
-
-  /* Altura de mensajes = alto pantalla - cabecera - composer */
-  .view-chat .msgs {
-    max-height: calc(100dvh - var(--chatbar-h) - var(--composer-min-h) - var(--safe-top) - var(--safe-bottom));
-    overflow: auto;
-  }
 }
 
 /* =========================

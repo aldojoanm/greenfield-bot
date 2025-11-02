@@ -5,14 +5,13 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
   <title>Inbox — Greenfield</title>
 
-  <!-- Estilos -->
   <link rel="stylesheet" href="./agent.css">
 
-  <!-- Config de marca -->
+  <!-- Marca -->
   <meta name="brand:name" content="Greenfield Agroquímicos">
   <meta name="brand:qr" content="./qr-pagos.png">
 
-  <!-- PWA en el mismo directorio -->
+  <!-- PWA -->
   <link rel="manifest" href="./manifest.webmanifest">
   <meta name="theme-color" content="#00a884">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -21,7 +20,7 @@
 </head>
 <body>
   <div id="app" class="app">
-    <!-- LADO LISTA (siempre visible en desktop; vista principal en móvil) -->
+    <!-- LISTA -->
     <section id="view-list" class="view view-list active safe-top">
       <header class="topbar">
         <h1>Inbox</h1>
@@ -50,7 +49,7 @@
       <div id="threadList" class="threads"></div>
     </section>
 
-    <!-- LADO CHAT (en móvil se muestra a pantalla completa; en desktop vive a la derecha) -->
+    <!-- CHAT -->
     <section id="view-chat" class="view view-chat safe-top">
       <header class="chatbar">
         <button id="backBtn" class="icon-btn only-mobile" aria-label="Volver">←</button>
@@ -61,7 +60,7 @@
         <span id="status" class="pill" style="display:none">HUMANO</span>
       </header>
 
-      <!-- NUEVO: fila de acciones debajo del nombre/número (visible en desktop) -->
+      <!-- Acciones (desktop) -->
       <div id="sheetRow" class="sheet-row only-desktop" role="toolbar" aria-label="Acciones del chat">
         <button class="sheet-item" id="takeHuman">⏸️ Pausar bot</button>
         <button class="sheet-item" id="resumeBot">▶️ Bot ON</button>
@@ -83,7 +82,7 @@
         <textarea id="box" placeholder="Escribe un mensaje…"></textarea>
         <button id="send" class="icon-btn send" aria-label="Enviar">➤</button>
 
-        <!-- Hoja de acciones MOBILE (sheet modal) -->
+        <!-- Sheet móvil -->
         <div id="sheet" class="sheet">
           <button class="sheet-item" id="takeHuman_m">⏸️ Pausar bot</button>
           <button class="sheet-item" id="resumeBot_m">▶️ Bot ON</button>
