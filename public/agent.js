@@ -13,6 +13,7 @@ const ACCOUNTS_TEXT = [
 ].join('\n');
 
 // ====== DOM ======
+const app        = document.getElementById('app');
 const viewList   = document.getElementById('view-list');
 const viewChat   = document.getElementById('view-chat');
 const threadList = document.getElementById('threadList');
@@ -40,8 +41,10 @@ let current = null;
 let allConvos = [];
 let sse = null;
 let filter = 'all';
+let pollTimer = null;
 
 // ====== Utils ======
+const isDesktop = () => window.matchMedia('(min-width:1024px)').matches;
 const normId = v => String(v ?? '');
 const sameId = (a,b)=> normId(a) === normId(b);
 const looksLikeMediaLine = (t='')=> /^([🖼️🎬🎧📎])/.test(String(t).trim());
@@ -98,6 +101,41 @@ function setConn(status, title=''){
   elConn.textContent = (map[status]||'') + (title?` — ${title}`:'');
 }
 
+/* ===== SSE con reconexión y fallback de sondeo ===== */
+function startPolling(){
+  stopPolling();
+  pollTimer = setInterval(()=> refresh(false), 20000);
+}
+function stopPolling(){
+  if (pollTimer){ clearInterval(pollTimer); pollTimer=null; }
+}
+
+function startSSE(){
+  try{ if (sse) sse.close(); }catch{}
+  if (!api.token) return;
+  sse = new EventSource('/wa/agent/stream?token=' + encodeURIComponent(api.token));
+  setConn('ok');
+  stopPolling();
+
+  sse.addEventListener('open', ()=> setConn('ok'));
+  sse.addEventListener('ping', ()=> setConn('ok'));
+  sse.addEventListener('msg', (ev)=>{
+    const data = JSON.parse(ev.data||'{}');
+    if(current && sameId(normId(data.id), current.id)){
+      current.memory = (current.memory||[]).concat([{role:data.role, content:data.content, ts:data.ts}]);
+      renderMsgs(current.memory);
+    }
+    refresh(false);
+  });
+  sse.onerror = ()=>{
+    setConn('off','reintentando');
+    // iOS puede cerrar SSE al suspender; usa fallback
+    startPolling();
+    try{ sse.close(); }catch{}
+    setTimeout(startSSE, 4000);
+  };
+}
+
 async function requestToken(force=false){
   if (!force && api.token && !api.isExpired()) return true;
   while (true){
@@ -118,26 +156,14 @@ async function forceReauth(){
   api.clear(); setConn('off','sesión caducada');
   const ok = await requestToken(true); if (ok) await refresh(true);
 }
-function startSSE(){
-  try{ if (sse) sse.close(); }catch{}
-  if (!api.token) return;
-  sse = new EventSource('/wa/agent/stream?token=' + encodeURIComponent(api.token));
-  setConn('ok');
-  sse.addEventListener('ping', ()=> setConn('ok'));
-  sse.addEventListener('msg', (ev)=>{
-    const data = JSON.parse(ev.data||'{}');
-    // Actualiza memoria del chat abierto
-    if(current && sameId(normId(data.id), current.id)){
-      current.memory = (current.memory||[]).concat([{role:data.role, content:data.content, ts:data.ts}]);
-      renderMsgs(current.memory);
-    }
-    // Refresca lista (para último mensaje/contador)
-    refresh(false);
-  });
-  sse.onerror = ()=> setConn('off');
-}
 
-// ====== Lista estilo Messenger ======
+// Reconecta cuando la app vuelve a primer plano (iOS PWA)
+document.addEventListener('visibilitychange', ()=>{
+  if (document.visibilityState === 'visible'){ setConn('wait','reconectando'); startSSE(); refresh(false); }
+});
+window.addEventListener('pageshow', (e)=>{ if (e.persisted){ startSSE(); refresh(false); }});
+
+// ====== LISTA estilo Messenger ======
 const lastFromMemory = (m=[]) => m.length ? m[m.length-1] : null;
 const statusDot = (c)=> c.unread ? 'unread' : (c.done||c.finalizado) ? 'done' : c.human ? 'agent' : 'done';
 const initial = (name='?') => name.trim()[0]?.toUpperCase?.() || '?';
@@ -175,9 +201,7 @@ function renderThreads(){
           <div class="t-name">${c.name || c.id}</div>
           <div class="t-time">${when}</div>
         </div>
-        <div class="t-row2">
-          <div class="t-last">${lastTxt || ''}</div>
-        </div>
+        <div class="t-row2"><div class="t-last">${lastTxt || ''}</div></div>
       </div>
       <div class="dot ${dot}" title="${dot}"></div>
     `;
@@ -186,7 +210,7 @@ function renderThreads(){
   }
 }
 
-// ====== Chat ======
+// ====== CHAT ======
 function renderMsgs(mem){
   msgsEl.innerHTML = '';
   for (const m of (mem||[])){
@@ -213,8 +237,11 @@ async function openChat(id){
     statusPill.style.display = current.human ? 'inline-block' : 'none';
     renderMsgs(current.memory||[]);
     await api.read(current.id).catch(()=>{});
-    viewList.classList.remove('active');
-    viewChat.classList.add('active');
+
+    if (!isDesktop()){
+      viewList.classList.remove('active');
+      viewChat.classList.add('active');
+    }
   }catch{ alert('No pude abrir el chat.'); }
 }
 backBtn.onclick = ()=>{ current=null; viewChat.classList.remove('active'); viewList.classList.add('active'); };
@@ -274,11 +301,14 @@ searchEl.oninput = renderList;
 segBtns.forEach(b=> b.onclick = ()=>{ segBtns.forEach(x=>x.classList.remove('active')); b.classList.add('active'); filter = b.dataset.filter; renderList(); });
 
 // Datos
-async function refresh(){
+async function refresh(openFirst=false){
   try{
     const {convos} = await api.convos();
     allConvos = (convos||[]).map(c=>({...c, id:normId(c.id)}));
     renderList();
+    if (openFirst && !current && allConvos.length && isDesktop()){
+      openChat(allConvos[0].id);
+    }
   }catch{}
 }
 
@@ -286,7 +316,7 @@ async function refresh(){
 (async function(){
   const ok = await requestToken(false);
   if (!ok) return;
-  await refresh();
+  await refresh(true);
   setInterval(()=>{ if (api.isExpired()) forceReauth(); }, 60*1000);
   startSSE();
 })();

@@ -7,7 +7,7 @@
   "orientation": "portrait",
   "background_color": "#0b141a",
   "theme_color": "#00a884",
-  "description": "Bandeja tipo Messenger para asesor/bot con envío de archivos.",
+  "description": "Bandeja tipo Messenger/WhatsApp Web para asesor/bot con envío de archivos.",
   "icons": [
     { "src": "./greenfield-logo.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
     { "src": "./greenfield-logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
