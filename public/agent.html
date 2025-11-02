@@ -21,7 +21,7 @@
 <body>
   <div id="app" class="app safe-top">
 
-    <!-- TOPBAR UNA SOLA LÍNEA (PC y móvil) -->
+    <!-- TOPBAR -->
     <header class="topbar">
       <h1>Inbox</h1>
 
@@ -44,22 +44,21 @@
       </div>
     </header>
 
-    <!-- Botón de activar push solo en móvil -->
+    <!-- Botón activar push (solo móvil) -->
     <div class="only-mobile extra-pad">
       <button id="enablePush" class="chip">🔔 Activar notificaciones</button>
     </div>
 
     <main class="content">
-      <!-- LISTA (izquierda en PC, pantalla completa en móvil) -->
+      <!-- LISTA -->
       <section id="view-list" class="view view-list active">
         <div id="threadList" class="threads"></div>
       </section>
 
-      <!-- CHAT (derecha en PC, pantalla completa en móvil) -->
+      <!-- CHAT -->
       <section id="view-chat" class="view view-chat">
         <header class="chat-head">
           <button id="backBtn" class="only-mobile icon-btn" aria-label="Volver">←</button>
-
           <div class="who">
             <div class="name-row">
               <div id="chatName" class="name">Contacto</div>
@@ -69,8 +68,8 @@
           </div>
         </header>
 
-        <!-- Acciones bajo el número (PC y móvil) -->
-        <div class="inline-actions">
+        <!-- Acciones (escritorio) -->
+        <div class="inline-actions only-desktop">
           <button class="chip" id="takeHuman">⏸️ Pausar bot</button>
           <button class="chip" id="resumeBot">▶️ Bot ON</button>
           <button class="chip" id="markRead">✓ Marcar leído</button>
@@ -96,6 +95,22 @@
             <span class="only-desktop">Enviar</span><span class="only-mobile">➤</span>
           </button>
         </footer>
+
+        <!-- FAB + hoja de acciones (solo móvil) -->
+        <button id="mobileFab" class="fab only-mobile" aria-label="Más acciones">＋</button>
+        <div id="mobileActions" class="sheet only-mobile" aria-hidden="true">
+          <div class="sheet-handle"></div>
+          <div class="sheet-actions">
+            <button class="chip block" data-act="takeHuman">⏸️ Pausar bot</button>
+            <button class="chip block" data-act="resumeBot">▶️ Bot ON</button>
+            <button class="chip block" data-act="markRead">✓ Marcar leído</button>
+            <button class="chip block" data-act="requestInfo">📋 Solicitar datos</button>
+            <button class="chip block" data-act="sendQR">🧾 QR</button>
+            <button class="chip block" data-act="sendAccounts">🏦 Cuentas</button>
+            <button class="chip block danger" data-act="closeSheet">Cerrar</button>
+          </div>
+          <div class="sheet-safe"></div>
+        </div>
       </section>
     </main>
   </div>

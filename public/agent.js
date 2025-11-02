@@ -34,6 +34,10 @@ const segBtns    = Array.from(document.querySelectorAll('.segmented .seg'));
 const attachBtn  = document.getElementById('attachBtn');
 const enablePushBtn = document.getElementById('enablePush');
 
+// móvil
+const mobileFab  = document.getElementById('mobileFab');
+const mobileSheet= document.getElementById('mobileActions');
+
 // ===== Estado =====
 let current = null;
 let allConvos = [];
@@ -99,7 +103,7 @@ function setConn(status, title=''){
   elConn.textContent = (map[status]||'') + (title?` — ${title}`:'');
 }
 
-/* ===== SSE con reconexión + fallback polling (iOS PWA suspende) ===== */
+/* ===== SSE con reconexión + fallback ===== */
 function startPolling(){ stopPolling(); pollTimer = setInterval(()=> refresh(false), 20000); }
 function stopPolling(){ if (pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
 
@@ -148,11 +152,11 @@ async function forceReauth(){
   const ok = await requestToken(true); if (ok) await refresh(true);
 }
 
-/* Reconectar al volver a foreground (iOS) */
+/* foreground */
 document.addEventListener('visibilitychange', ()=>{ if (document.visibilityState === 'visible'){ setConn('wait','reconectando'); startSSE(); refresh(false); }});
 window.addEventListener('pageshow', (e)=>{ if (e.persisted){ startSSE(); refresh(false); }});
 
-/* Lista estilo Messenger */
+/* Lista */
 const lastFromMemory = (m=[]) => m.length ? m[m.length-1] : null;
 const statusDot = (c)=> c.unread ? 'unread' : (c.done||c.finalizado) ? 'done' : c.human ? 'agent' : 'done';
 const initial = (name='?') => name.trim()[0]?.toUpperCase?.() || '?';
@@ -214,6 +218,7 @@ function renderMsgs(mem){
     else div.textContent = txt;
     msgsEl.appendChild(div);
   }
+  // autoscroll
   msgsEl.scrollTop = msgsEl.scrollHeight;
 }
 
@@ -235,8 +240,11 @@ async function openChat(id){
 }
 backBtn?.addEventListener('click', ()=>{ current=null; viewChat.classList.remove('active'); viewList.classList.add('active'); });
 
-/* Acciones rápidas */
-document.getElementById('requestInfo').onclick = async ()=>{
+/* Acciones rápidas (handlers compartidos) */
+async function do_takeHuman(){ if(!current) return; await api.handoff(current.id,'human'); document.getElementById('status').style.display='inline-block'; }
+async function do_resumeBot(){ if(!current) return; await api.handoff(current.id,'bot'); document.getElementById('status').style.display='none'; }
+async function do_markRead(){ if(!current) return; await api.read(current.id); refresh(false); }
+async function do_requestInfo(){
   if (!current) return;
   const nombre = current.name?.trim() || 'cliente';
   const part1 = [
@@ -252,8 +260,8 @@ document.getElementById('requestInfo').onclick = async ()=>{
   ].join('\n');
   await api.send(current.id, part1);
   await api.send(current.id, part2);
-};
-document.getElementById('sendQR').onclick = async ()=>{
+}
+async function do_sendQR(){
   if (!current) return;
   const QR_URLS = [BRAND_QR, './qr-pagos.png'];
   let blob = null, mime = 'image/png';
@@ -261,14 +269,22 @@ document.getElementById('sendQR').onclick = async ()=>{
   if (!blob){ alert('No encontré el archivo QR.'); return; }
   const file = new File([blob], 'qr-pagos.png', { type: mime });
   await api.sendMedia(current.id, [file], '');
-};
-document.getElementById('sendAccounts').onclick = async ()=>{ if (!current) return; await api.send(current.id, ACCOUNTS_TEXT); };
-document.getElementById('markRead').onclick  = async ()=>{ if(!current) return; await api.read(current.id); refresh(false); };
-document.getElementById('takeHuman').onclick = async ()=>{ if(!current) return; await api.handoff(current.id,'human'); document.getElementById('status').style.display='inline-block'; };
-document.getElementById('resumeBot').onclick = async ()=>{ if(!current) return; await api.handoff(current.id,'bot'); document.getElementById('status').style.display='none'; };
+}
+async function do_sendAccounts(){ if (!current) return; await api.send(current.id, ACCOUNTS_TEXT); }
 
-sendBtn.onclick = async ()=>{ const txt = box.value.trim(); if(!txt || !current) return; box.value=''; await api.send(current.id, txt); };
-box.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendBtn.click(); } });
+/* Hook de botones de escritorio */
+document.getElementById('takeHuman')?.addEventListener('click', do_takeHuman);
+document.getElementById('resumeBot')?.addEventListener('click', do_resumeBot);
+document.getElementById('markRead')?.addEventListener('click', do_markRead);
+document.getElementById('requestInfo')?.addEventListener('click', do_requestInfo);
+document.getElementById('sendQR')?.addEventListener('click', do_sendQR);
+document.getElementById('sendAccounts')?.addEventListener('click', do_sendAccounts);
+
+/* Envío mensajes */
+document.getElementById('send').onclick = async ()=>{
+  const txt = box.value.trim(); if(!txt || !current) return; box.value=''; await api.send(current.id, txt);
+};
+box.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); document.getElementById('send').click(); } });
 
 attachBtn.onclick = ()=> fileInput.click();
 fileInput.onchange = async (e)=>{
@@ -278,6 +294,7 @@ fileInput.onchange = async (e)=>{
   e.target.value='';
 };
 
+/* Drag&drop */
 ['dragenter','dragover'].forEach(ev=> dropZone.addEventListener(ev, e=>{ e.preventDefault(); e.stopPropagation(); dropZone.classList.add('drag'); }));
 ['dragleave','drop'].forEach(ev=> dropZone.addEventListener(ev, e=>{ e.preventDefault(); e.stopPropagation(); dropZone.classList.remove('drag'); }));
 dropZone.addEventListener('drop', async (e)=>{
@@ -303,25 +320,25 @@ async function refresh(openFirst=false){
   }catch{}
 }
 
-/* ===== PWA + Service Worker ===== */
+/* ===== PWA + SW ===== */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(()=>{});
   });
 }
 
-/* ===== Push: botón visible y flujo robusto ===== */
+/* ===== Push ===== */
 async function maybeEnablePush(){
-  const canBasics = ('Notification' in window) && ('serviceWorker' in navigator) && ('PushManager' in window);
-  if (enablePushBtn) {
-    enablePushBtn.style.display = canBasics ? 'inline-block' : 'none';
-    if (canBasics) enablePushBtn.addEventListener('click', requestPush, { once:false });
-  }
+  const ok = ('Notification' in window) && ('serviceWorker' in navigator) && ('PushManager' in window);
+  if (!enablePushBtn) return;
+  enablePushBtn.style.display = ok ? 'inline-block' : 'none';
+  if (!ok) return;
+
+  enablePushBtn.addEventListener('click', requestPush);
 }
 
 async function requestPush(){
   try{
-    if (!('Notification' in window)) { alert('Este navegador no soporta Notificaciones.'); return; }
     if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
       alert('Se requiere HTTPS para activar notificaciones.');
       return;
@@ -329,12 +346,12 @@ async function requestPush(){
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     if (isIOS && !isStandalone) {
-      alert('En iPhone, primero “Añadir a pantalla de inicio” y abrir desde el ícono para activar notificaciones.');
+      alert('En iPhone: “Añadir a pantalla de inicio” y abrir desde el ícono para poder activar notificaciones.');
       return;
     }
 
     const perm = await Notification.requestPermission();
-    if (perm !== 'granted') { alert('Notificaciones no habilitadas.'); return; }
+    if (perm !== 'granted') { alert('No se concedió permiso de notificaciones.'); return; }
 
     const reg = await navigator.serviceWorker.ready;
     const vapidPublicKey = (window.PUSH_VAPID || 'BEl0...TU_CLAVE...xQ');
@@ -347,7 +364,7 @@ async function requestPush(){
     alert('✅ Notificaciones activadas.');
   } catch (err) {
     console.error('requestPush error', err);
-    alert('No pude activar notificaciones en este dispositivo.');
+    alert('No se puede activar notificaciones en este dispositivo.');
   }
 }
 
@@ -363,6 +380,31 @@ function urlBase64ToUint8Array(base64String){
 /* Conectividad */
 window.addEventListener('offline', ()=> setConn('off','sin red'));
 window.addEventListener('online',  ()=> { setConn('wait','reconectando'); startSSE(); });
+
+/* ===== FAB & Sheet (móvil) ===== */
+function toggleSheet(open){
+  if (!mobileSheet) return;
+  const willOpen = (open ?? !mobileSheet.classList.contains('open'));
+  mobileSheet.classList.toggle('open', willOpen);
+  mobileSheet.setAttribute('aria-hidden', String(!willOpen));
+}
+mobileFab?.addEventListener('click', ()=> toggleSheet(true));
+mobileSheet?.addEventListener('click', (e)=>{
+  const t = e.target.closest('[data-act]');
+  if (!t) return;
+  const act = t.getAttribute('data-act');
+  if (act === 'closeSheet'){ toggleSheet(false); return; }
+  const actions = {
+    takeHuman: do_takeHuman,
+    resumeBot: do_resumeBot,
+    markRead: do_markRead,
+    requestInfo: do_requestInfo,
+    sendQR: do_sendQR,
+    sendAccounts: do_sendAccounts,
+  };
+  const fn = actions[act];
+  if (fn) fn().finally(()=> toggleSheet(false));
+});
 
 /* ===== Bootstrap ===== */
 (async function(){
