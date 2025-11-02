@@ -1,8 +1,8 @@
-// ====== Marca ======
+// ===== Marca =====
 const BRAND_NAME = document.querySelector('meta[name="brand:name"]')?.content?.trim() || 'Greenfield Agroquímicos';
 const BRAND_QR   = document.querySelector('meta[name="brand:qr"]')?.content?.trim()   || './qr-pagos.png';
 
-// ====== Cuentas ======
+// ===== Cuentas =====
 const ACCOUNTS_TEXT = [
   `*Titular:* ${BRAND_NAME}`,
   '*Moneda:* Bolivianos',
@@ -12,8 +12,7 @@ const ACCOUNTS_TEXT = [
   '*BANCO SOL*',    '*Cuenta Corriente:* 2784368-000-001'
 ].join('\n');
 
-// ====== DOM ======
-const app        = document.getElementById('app');
+// ===== DOM =====
 const viewList   = document.getElementById('view-list');
 const viewChat   = document.getElementById('view-chat');
 const threadList = document.getElementById('threadList');
@@ -24,8 +23,6 @@ const backBtn    = document.getElementById('backBtn');
 const chatName   = document.getElementById('chatName');
 const chatMeta   = document.getElementById('chatMeta');
 const msgsEl     = document.getElementById('msgs');
-const moreBtn    = document.getElementById('moreBtn');
-const sheet      = document.getElementById('sheet');
 const fileInput  = document.getElementById('fileInput');
 const dropZone   = document.getElementById('dropZone');
 const box        = document.getElementById('box');
@@ -35,15 +32,16 @@ const importBtn  = document.getElementById('importWA');
 const logoutBtn  = document.getElementById('logout');
 const searchEl   = document.getElementById('search');
 const segBtns    = Array.from(document.querySelectorAll('.segmented .seg'));
+const attachBtn  = document.getElementById('attachBtn');
 
-// ====== Estado ======
+// ===== Estado =====
 let current = null;
 let allConvos = [];
 let sse = null;
 let filter = 'all';
 let pollTimer = null;
 
-// ====== Utils ======
+// ===== Utils =====
 const isDesktop = () => window.matchMedia('(min-width:1024px)').matches;
 const normId = v => String(v ?? '');
 const sameId = (a,b)=> normId(a) === normId(b);
@@ -58,7 +56,7 @@ const timeAgo = (ts)=> {
   return `${Math.floor(diff/86400)}d`;
 };
 
-// ====== Token 24h / dispositivo ======
+// ===== Token 24h / dispositivo =====
 const TOKEN_TTL_MS = 24*60*60*1000;
 const LS_TOKEN   = 'agent.token';
 const LS_TOKENAT = 'agent.tokenAt';
@@ -101,21 +99,15 @@ function setConn(status, title=''){
   elConn.textContent = (map[status]||'') + (title?` — ${title}`:'');
 }
 
-/* ===== SSE con reconexión y fallback de sondeo ===== */
-function startPolling(){
-  stopPolling();
-  pollTimer = setInterval(()=> refresh(false), 20000);
-}
-function stopPolling(){
-  if (pollTimer){ clearInterval(pollTimer); pollTimer=null; }
-}
+/* ===== SSE con reconexión + fallback polling (iOS PWA suspende) ===== */
+function startPolling(){ stopPolling(); pollTimer = setInterval(()=> refresh(false), 20000); }
+function stopPolling(){ if (pollTimer){ clearInterval(pollTimer); pollTimer=null; } }
 
 function startSSE(){
   try{ if (sse) sse.close(); }catch{}
   if (!api.token) return;
   sse = new EventSource('/wa/agent/stream?token=' + encodeURIComponent(api.token));
-  setConn('ok');
-  stopPolling();
+  setConn('ok'); stopPolling();
 
   sse.addEventListener('open', ()=> setConn('ok'));
   sse.addEventListener('ping', ()=> setConn('ok'));
@@ -129,7 +121,6 @@ function startSSE(){
   });
   sse.onerror = ()=>{
     setConn('off','reintentando');
-    // iOS puede cerrar SSE al suspender; usa fallback
     startPolling();
     try{ sse.close(); }catch{}
     setTimeout(startSSE, 4000);
@@ -157,13 +148,11 @@ async function forceReauth(){
   const ok = await requestToken(true); if (ok) await refresh(true);
 }
 
-// Reconecta cuando la app vuelve a primer plano (iOS PWA)
-document.addEventListener('visibilitychange', ()=>{
-  if (document.visibilityState === 'visible'){ setConn('wait','reconectando'); startSSE(); refresh(false); }
-});
+/* Reconectar al volver a foreground (iOS) */
+document.addEventListener('visibilitychange', ()=>{ if (document.visibilityState === 'visible'){ setConn('wait','reconectando'); startSSE(); refresh(false); }});
 window.addEventListener('pageshow', (e)=>{ if (e.persisted){ startSSE(); refresh(false); }});
 
-// ====== LISTA estilo Messenger ======
+/* Lista estilo Messenger */
 const lastFromMemory = (m=[]) => m.length ? m[m.length-1] : null;
 const statusDot = (c)=> c.unread ? 'unread' : (c.done||c.finalizado) ? 'done' : c.human ? 'agent' : 'done';
 const initial = (name='?') => name.trim()[0]?.toUpperCase?.() || '?';
@@ -186,7 +175,7 @@ function renderThreads(){
     let lastTxt = String(c.last || lastMem?.content || '').replace(/\n/g,' ');
     const lastRole = lastMem?.role;
     const prefix = lastRole==='bot' || lastRole==='agent' ? 'You: ' : (c.name ? `${c.name}: ` : '');
-    if (lastTxt) lastTxt = (prefix + lastTxt).slice(0,120);
+    if (lastTxt) lastTxt = (prefix + lastTxt).slice(0,140);
 
     const ts = c.ts || lastMem?.ts; const when = ts ? timeAgo(ts) : '';
     const dot = statusDot(c);
@@ -210,7 +199,7 @@ function renderThreads(){
   }
 }
 
-// ====== CHAT ======
+/* Chat */
 function renderMsgs(mem){
   msgsEl.innerHTML = '';
   for (const m of (mem||[])){
@@ -244,9 +233,9 @@ async function openChat(id){
     }
   }catch{ alert('No pude abrir el chat.'); }
 }
-backBtn.onclick = ()=>{ current=null; viewChat.classList.remove('active'); viewList.classList.add('active'); };
+backBtn?.addEventListener('click', ()=>{ current=null; viewChat.classList.remove('active'); viewList.classList.add('active'); });
 
-// ====== Acciones ======
+/* Acciones */
 document.getElementById('requestInfo').onclick = async ()=>{
   if (!current) return;
   const nombre = current.name?.trim() || 'cliente';
@@ -263,7 +252,6 @@ document.getElementById('requestInfo').onclick = async ()=>{
   ].join('\n');
   await api.send(current.id, part1);
   await api.send(current.id, part2);
-  closeSheet();
 };
 document.getElementById('sendQR').onclick = async ()=>{
   if (!current) return;
@@ -273,34 +261,28 @@ document.getElementById('sendQR').onclick = async ()=>{
   if (!blob){ alert('No encontré el archivo QR.'); return; }
   const file = new File([blob], 'qr-pagos.png', { type: mime });
   await api.sendMedia(current.id, [file], '');
-  closeSheet();
 };
-document.getElementById('sendAccounts').onclick = async ()=>{ if (!current) return; await api.send(current.id, ACCOUNTS_TEXT); closeSheet(); };
-document.getElementById('markRead').onclick  = async ()=>{ if(!current) return; await api.read(current.id); closeSheet(); refresh(false); };
-document.getElementById('takeHuman').onclick = async ()=>{ if(!current) return; await api.handoff(current.id,'human'); statusPill.style.display='inline-block'; closeSheet(); };
-document.getElementById('resumeBot').onclick = async ()=>{ if(!current) return; await api.handoff(current.id,'bot'); statusPill.style.display='none'; closeSheet(); };
+document.getElementById('sendAccounts').onclick = async ()=>{ if (!current) return; await api.send(current.id, ACCOUNTS_TEXT); };
+document.getElementById('markRead').onclick  = async ()=>{ if(!current) return; await api.read(current.id); refresh(false); };
+document.getElementById('takeHuman').onclick = async ()=>{ if(!current) return; await api.handoff(current.id,'human'); statusPill.style.display='inline-block'; };
+document.getElementById('resumeBot').onclick = async ()=>{ if(!current) return; await api.handoff(current.id,'bot'); statusPill.style.display='none'; };
 
 sendBtn.onclick = async ()=>{ const txt = box.value.trim(); if(!txt || !current) return; box.value=''; await api.send(current.id, txt); };
 box.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendBtn.click(); } });
 
-document.getElementById('attachBtn').onclick = ()=> fileInput.click();
+attachBtn.onclick = ()=> fileInput.click();
 fileInput.onchange = async (e)=>{ const files = Array.from(e.target.files||[]); if(!files.length || !current) return; try{ await api.sendMedia(current.id, files, ''); } catch{ alert('Error subiendo archivo(s).'); } e.target.value=''; };
 
 ['dragenter','dragover'].forEach(ev=> dropZone.addEventListener(ev, e=>{ e.preventDefault(); e.stopPropagation(); dropZone.classList.add('drag'); }));
 ['dragleave','drop'].forEach(ev=> dropZone.addEventListener(ev, e=>{ e.preventDefault(); e.stopPropagation(); dropZone.classList.remove('drag'); }));
 dropZone.addEventListener('drop', async (e)=>{ const files = Array.from(e.dataTransfer?.files||[]); if (!files.length || !current) return; try{ await api.sendMedia(current.id, files, ''); } catch{ alert('Error subiendo archivo(s).'); } });
 
-// Sheet
-const closeSheet = ()=> sheet.classList.remove('show');
-moreBtn.onclick = ()=> sheet.classList.toggle('show');
-document.getElementById('closeSheet').onclick = closeSheet;
-
-// Filtros
+/* Filtros */
 function renderList(){ renderThreads(); }
 searchEl.oninput = renderList;
 segBtns.forEach(b=> b.onclick = ()=>{ segBtns.forEach(x=>x.classList.remove('active')); b.classList.add('active'); filter = b.dataset.filter; renderList(); });
 
-// Datos
+/* Datos */
 async function refresh(openFirst=false){
   try{
     const {convos} = await api.convos();
@@ -312,29 +294,49 @@ async function refresh(openFirst=false){
   }catch{}
 }
 
-// Bootstrap
+/* Bootstrap */
 (async function(){
   const ok = await requestToken(false);
   if (!ok) return;
   await refresh(true);
   setInterval(()=>{ if (api.isExpired()) forceReauth(); }, 60*1000);
   startSSE();
+  // Web Push (PWA instalado)
+  try{ await maybeEnablePush(); }catch{}
 })();
 
-// PWA (rutas relativas)
+/* PWA + Push */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(()=>{});
   });
 }
-let deferredPrompt=null;
-window.addEventListener('beforeinstallprompt',(e)=>{
-  e.preventDefault(); deferredPrompt=e;
-  const btn=document.createElement('button');
-  btn.textContent='Instalar'; btn.className='btn';
-  Object.assign(btn.style,{position:'fixed',right:'12px',bottom:'12px',zIndex:'9999'});
-  document.body.appendChild(btn);
-  btn.onclick=async()=>{ btn.disabled=true; try{ await deferredPrompt.prompt(); await deferredPrompt.userChoice; }finally{ btn.remove(); deferredPrompt=null; } };
-});
+async function maybeEnablePush(){
+  if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  // solo pedir si el usuario hace click en "⟳" o import, para cumplir gesto del usuario (o descomenta para auto-preguntar)
+  refreshBtn.addEventListener('click', requestPush, { once:true });
+}
+async function requestPush(){
+  const perm = await Notification.requestPermission();
+  if (perm !== 'granted') return;
+  const reg = await navigator.serviceWorker.ready;
+  // Reemplaza por tu clave pública VAPID
+  const vapidPublicKey = (window.PUSH_VAPID || 'BEl0...TU_CLAVE...xQ'); 
+  const sub = await reg.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+  });
+  await fetch('/push/subscribe', { method:'POST', headers: api.headers(), body: JSON.stringify(sub) });
+}
+function urlBase64ToUint8Array(base64String){
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
+}
+
+/* Conectividad */
 window.addEventListener('offline', ()=> setConn('off','sin red'));
 window.addEventListener('online',  ()=> { setConn('wait','reconectando'); startSSE(); });

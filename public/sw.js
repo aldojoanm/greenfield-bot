@@ -1,4 +1,4 @@
-const CACHE = 'inbox-greenfield-v4';
+const CACHE = 'inbox-greenfield-v5';
 const APP_SHELL = [
   './agent.html',
   './agent.css',
@@ -17,6 +17,7 @@ self.addEventListener('activate', (e) => {
   );
   self.clients.claim();
 });
+
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
@@ -35,4 +36,28 @@ self.addEventListener('fetch', (e) => {
   } else {
     e.respondWith(fetch(req).catch(()=> caches.match('./agent.html')));
   }
+});
+
+/* Web Push */
+self.addEventListener('push', (event) => {
+  let data = {};
+  try{ data = event.data?.json() || {}; }catch{}
+  const title = data.title || 'Nuevo mensaje';
+  const body  = data.body  || 'Tienes un nuevo mensaje en Inbox';
+  const tag   = data.tag   || 'inbox';
+  const icon  = data.icon  || './greenfield-logo.png';
+  const badge = data.badge || './greenfield-logo.png';
+  const options = { body, tag, icon, badge, data: data.url || './agent.html' };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = event.notification.data || './agent.html';
+  event.waitUntil(
+    clients.matchAll({ type:'window', includeUncontrolled:true }).then(list => {
+      for (const c of list) { if (c.url.endsWith('/agent.html')) return c.focus(); }
+      return clients.openWindow(url);
+    })
+  );
 });

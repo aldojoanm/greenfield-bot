@@ -5,14 +5,13 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
   <title>Inbox — Greenfield</title>
 
-  <!-- Estilos -->
   <link rel="stylesheet" href="./agent.css">
 
-  <!-- Config de marca -->
+  <!-- Marca -->
   <meta name="brand:name" content="Greenfield Agroquímicos">
-  <meta name="brand:qr" content="./qr-pagos.png">
+  <meta name="brand:qr"   content="./qr-pagos.png">
 
-  <!-- PWA en el mismo directorio -->
+  <!-- PWA -->
   <link rel="manifest" href="./manifest.webmanifest">
   <meta name="theme-color" content="#00a884">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -20,71 +19,77 @@
   <link rel="apple-touch-icon" href="./greenfield-logo.png">
 </head>
 <body>
-  <div id="app" class="app">
-    <!-- LADO LISTA (siempre visible en desktop; vista principal en móvil) -->
-    <section id="view-list" class="view view-list active safe-top">
-      <header class="topbar">
-        <h1>Inbox</h1>
-        <span id="conn" class="pill" aria-live="polite">Conectando…</span>
-      </header>
+  <div id="app" class="app safe-top">
 
-      <div class="filters">
-        <div class="filters-row">
-          <span id="msgCount" class="count">Mensajes (0)</span>
-          <div class="segmented">
-            <button class="seg active" data-filter="all">Todos</button>
-            <button class="seg" data-filter="done">Finalizados</button>
-            <button class="seg" data-filter="pending">No completados</button>
-            <button class="seg" data-filter="agent">Asesor</button>
-          </div>
-        </div>
-
-        <div class="searchbar">
-          <input id="search" placeholder="Buscar…">
-          <button class="btn" id="importWA" title="Importar WhatsApp (Sheets)">📥</button>
-          <button class="btn" id="refresh"  title="Refrescar">⟳</button>
-          <button class="btn" id="logout"   title="Salir">Salir</button>
-        </div>
+    <!-- TOPBAR UNA SOLA LÍNEA (PC y móvil) -->
+    <header class="topbar">
+      <h1>Inbox</h1>
+      <div class="segmented">
+        <button class="seg active" data-filter="all">Todos</button>
+        <button class="seg" data-filter="done">Finalizados</button>
+        <button class="seg" data-filter="pending">No completados</button>
+        <button class="seg" data-filter="agent">Asesor</button>
       </div>
+      <div class="spacer"></div>
+      <span id="msgCount" class="count">Mensajes (0)</span>
+      <div class="actions">
+        <input id="search" placeholder="Buscar…">
+        <button class="btn" id="importWA" title="Importar WhatsApp (Sheets)">📥</button>
+        <button class="btn" id="refresh"  title="Refrescar">⟳</button>
+        <button class="btn" id="logout"   title="Salir">Salir</button>
+        <span id="conn" class="pill" aria-live="polite">Conectando…</span>
+      </div>
+    </header>
 
-      <div id="threadList" class="threads"></div>
-    </section>
+    <main class="content">
+      <!-- LISTA (izquierda en PC, pantalla completa en móvil) -->
+      <section id="view-list" class="view view-list active">
+        <div id="threadList" class="threads"></div>
+      </section>
 
-    <!-- LADO CHAT (en móvil se muestra a pantalla completa; en desktop vive a la derecha) -->
-    <section id="view-chat" class="view view-chat safe-top">
-      <header class="chatbar">
-        <button id="backBtn" class="icon-btn only-mobile" aria-label="Volver">←</button>
-        <div class="chat-title">
-          <div id="chatName" class="name">Contacto</div>
-          <div id="chatMeta" class="meta"></div>
+      <!-- CHAT (derecha en PC, pantalla completa en móvil) -->
+      <section id="view-chat" class="view view-chat">
+        <header class="chat-head">
+          <button id="backBtn" class="only-mobile icon-btn" aria-label="Volver">←</button>
+
+          <div class="who">
+            <div class="name-row">
+              <div id="chatName" class="name">Contacto</div>
+              <span id="status" class="pill" style="display:none">HUMANO</span>
+            </div>
+            <div id="chatMeta" class="meta">–</div>
+          </div>
+        </header>
+
+        <!-- Acciones bajo el número (PC y móvil) -->
+        <div class="inline-actions">
+          <button class="chip" id="takeHuman">⏸️ Pausar bot</button>
+          <button class="chip" id="resumeBot">▶️ Bot ON</button>
+          <button class="chip" id="markRead">✓ Marcar leído</button>
+          <button class="chip" id="requestInfo">📋 Solicitar datos</button>
+          <button class="chip" id="sendQR">🧾 QR</button>
+          <button class="chip" id="sendAccounts">🏦 Cuentas</button>
         </div>
-        <span id="status" class="pill" style="display:none">HUMANO</span>
-      </header>
 
-      <main id="msgs" class="msgs"></main>
+        <div id="msgs" class="msgs"></div>
 
-      <footer class="composer" id="dropZone">
-        <div class="left-actions">
-          <button id="moreBtn" class="icon-btn" aria-label="Más">＋</button>
+        <!-- Composer: en PC muestra textos “Subir archivo / Escribir mensaje / Enviar” -->
+        <footer class="composer" id="dropZone">
           <input id="fileInput" type="file" multiple style="display:none"
-            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,image/*,video/*,audio/*">
-          <button id="attachBtn" class="icon-btn" aria-label="Adjuntar">📎</button>
-        </div>
-        <textarea id="box" placeholder="Escribe un mensaje…"></textarea>
-        <button id="send" class="icon-btn send" aria-label="Enviar">➤</button>
+                 accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,image/*,video/*,audio/*">
 
-        <!-- Hoja de acciones -->
-        <div id="sheet" class="sheet">
-          <button class="sheet-item" id="takeHuman">⏸️ Pausar bot</button>
-          <button class="sheet-item" id="resumeBot">▶️ Bot ON</button>
-          <button class="sheet-item" id="markRead">✓ Marcar leído</button>
-          <button class="sheet-item" id="requestInfo">📋 Solicitar datos</button>
-          <button class="sheet-item" id="sendQR">🧾 Enviar QR</button>
-          <button class="sheet-item" id="sendAccounts">🏦 Cuentas</button>
-          <button class="sheet-item alt" id="closeSheet">Cerrar</button>
-        </div>
-      </footer>
-    </section>
+          <button id="attachBtn" class="icon-btn attach">
+            <span class="only-desktop">Subir archivo</span><span class="only-mobile">📎</span>
+          </button>
+
+          <textarea id="box" placeholder="Escribir mensaje…"></textarea>
+
+          <button id="send" class="icon-btn send">
+            <span class="only-desktop">Enviar</span><span class="only-mobile">➤</span>
+          </button>
+        </footer>
+      </section>
+    </main>
   </div>
 
   <script src="./agent.js" defer></script>

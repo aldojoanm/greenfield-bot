@@ -1178,6 +1178,19 @@ if (flowActive && msg.type === 'text') {
   return res.sendStatus(200);
 }
 
+// ===== Menú post-finalización (se muestra después de enviar la cotización) =====
+async function sendPostFinalizeMenu(to) {
+  try {
+    // Texto de cierre breve
+    await toText(to, '¿Deseas hacer algo más?');
+    await toButtons(to, 'Opciones rápidas', [
+      { title: 'Seguir cotizando', payload: 'QR_SEGUIR' },
+      { title: 'Ver catálogo',     payload: 'OPEN_CATALOG' }
+    ]);
+  } catch (e) {
+    console.error('sendPostFinalizeMenu error:', e);
+  }
+}
 
 if (parsedCart && !IS_VENDOR && !advFlow(fromId)) {
   const s0 = S(fromId);
