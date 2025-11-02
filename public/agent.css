@@ -1,153 +1,371 @@
-/* ----------------- BASE ----------------- */
-:root { color-scheme: dark; }
+/* =========================
+   BASE / RESET
+   ========================= */
+:root {
+  color-scheme: dark;
+  --bg: #0b141a;
+  --panel: #111b21;
+  --panel-2: #1f2c33;
+  --ink: #e9edef;
+  --muted: #8aa;
+  --muted-2: #9fb1bb;
+  --accent: #00a884;
+  --ok-bg: #0b5;
+  --ok-ink: #061;
+
+  --topbar-h: 56px;            /* barra superior (una sola línea) */
+  --chatbar-h: 56px;           /* cabecera del chat */
+  --composer-min-h: 62px;      /* alto mínimo del composer */
+}
+
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
-body { background: #0b141a; color: #e9edef; font: 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Arial; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+}
 
-.app { min-height: 100dvh; display: flex; flex-direction: column; }
+/* Contenedor raíz */
+.app {
+  min-height: 100dvh;
+  display: block; /* en desktop lo convertimos a grid */
+}
 
-/* ----------------- TOPBAR ----------------- */
+/* Utilidades */
+.only-mobile { display: none; }
+.only-desktop { display: inline; }
+.safe-top { padding-top: var(--topbar-h); } /* porque la topbar es fija en desktop */
+
+.pill {
+  display: inline-block;
+  padding: .2rem .5rem;
+  border-radius: 999px;
+  background: var(--ok-bg);
+  color: var(--ok-ink);
+  font-weight: 700;
+}
+
+.btn,
+.icon-btn {
+  background: var(--panel-2);
+  color: var(--ink);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 6px;
+  padding: .35rem .6rem;
+  cursor: pointer;
+}
+
+/* =========================
+   TOPBAR (UNA LÍNEA, FULL WIDTH)
+   ========================= */
 .topbar {
-  --topbar-h: 56px;
-  display: flex; align-items: center; gap: .75rem;
+  position: fixed; /* ocupa todo el ancho en desktop */
+  inset: 0 0 auto 0;
   height: var(--topbar-h);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: .75rem;
   padding: 0 .75rem;
   border-bottom: 1px solid rgba(255,255,255,.07);
-  background: #111b21;
+  background: var(--panel);
 }
 .topbar h1 { margin: 0; font-size: 16px; font-weight: 600; }
 
-.segmented { display: flex; gap: .5rem; }
-.seg {
-  background: #1f2c33; border: 1px solid transparent; color: #cfd7dc;
-  padding: .35rem .6rem; border-radius: 999px; cursor: pointer;
+.filters {
+  padding: .5rem .75rem;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  background: transparent;
 }
-.seg.active { background: #0b5; color: #061; border-color: #093; }
-
-.spacer { flex: 1; }
-.actions { display: flex; align-items: center; gap: .5rem; }
-.actions input {
-  background: #111b21; border: 1px solid rgba(255,255,255,.08); color: #e9edef;
-  padding: .35rem .6rem; border-radius: 6px; min-width: 160px;
-}
-.btn {
-  background: #1f2c33; color: #e9edef; border: 1px solid rgba(255,255,255,.08);
-  border-radius: 6px; padding: .35rem .6rem; cursor: pointer;
-}
-.count { color: #8aa; }
-
-.pill {
-  display: inline-block; padding: .2rem .5rem; border-radius: 999px;
-  background: #0b5; color: #061; font-weight: 700;
-}
-
-/* ----------------- PUSH CHIP (móvil) ----------------- */
-.extra-pad { padding: .5rem .75rem; }
-.only-mobile { display: none; }
-.only-desktop { display: inline; }
-.chip {
-  border: 1px solid rgba(255,255,255,.12); background: #1f2c33; color: #e9edef;
-  border-radius: 999px; padding: .35rem .6rem; cursor: pointer;
-}
-
-/* ----------------- LAYOUT CENTRAL ----------------- */
-.content {
-  flex: 1 1 auto;
-  height: calc(100dvh - var(--topbar-h));
-  overflow: hidden;
+.filters-row {
   display: flex;
+  align-items: center;
+  gap: .75rem;
+  flex-wrap: wrap;
+}
+.count { color: var(--muted); }
+
+.segmented {
+  display: flex;
+  gap: .5rem;
+  flex-wrap: wrap;          /* que no se corte */
+  min-width: min(100%, 720px);
+}
+.seg {
+  background: var(--panel-2);
+  border: 1px solid transparent;
+  color: #cfd7dc;
+  padding: .35rem .6rem;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.seg.active { background: var(--ok-bg); color: var(--ok-ink); border-color: #093; }
+
+.searchbar {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin-top: .5rem;
+  flex-wrap: wrap;
+}
+.searchbar input {
+  background: var(--panel);
+  border: 1px solid rgba(255,255,255,.08);
+  color: var(--ink);
+  padding: .35rem .6rem;
+  border-radius: 6px;
+  min-width: 220px;
+  flex: 1 1 220px;
 }
 
+/* =========================
+   LAYOUT DE VISTAS
+   ========================= */
 .view {
-  flex: 1 1 auto;
-  height: 100%;
-  overflow: auto;
+  height: auto;
 }
 
-/* Desktop: lista + chat en columnas */
-@media (min-width: 1024px) {
-  .content { display: grid; grid-template-columns: 360px 1fr; gap: 0; }
-  .view-list { display: block; }
-  .view-chat { display: block; border-left: 1px solid rgba(255,255,255,0.08); }
-}
-
-/* Móvil: pantalla única por vista */
-@media (max-width: 1023px) {
-  .view { display: none; }
-  .view.active { display: block; }
-  .only-mobile { display: inline; }
-  .only-desktop { display: none; }
-
-  .view-chat .chat-head {
-    position: sticky; top: 0; z-index: 2; background: #0b141a;
-    border-bottom: 1px solid rgba(255,255,255,.06);
-  }
-  .view-chat .composer {
-    position: sticky; bottom: 0; z-index: 2; background: #0b141a;
-    border-top: 1px solid rgba(255,255,255,.06);
-  }
-  .view-chat .msgs {
-    max-height: calc(100dvh - var(--topbar-h) - 56px - 62px);
-    overflow: auto;
-  }
-}
-
-/* ----------------- LISTA DE HILOS ----------------- */
+/* Lista de hilos */
 .threads { display: flex; flex-direction: column; }
 .thread {
-  display: grid; grid-template-columns: 44px 1fr auto; gap: .75rem;
-  padding: .6rem .75rem; align-items: center;
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  gap: .75rem;
+  padding: .6rem .75rem;
+  align-items: center;
   border-bottom: 1px solid rgba(255,255,255,.06);
   cursor: pointer;
 }
 .thread:hover { background: rgba(255,255,255,.03); }
-.avatar { width: 44px; height: 44px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; background: #1f2c33; }
+.avatar {
+  width: 44px; height: 44px; border-radius: 50%; overflow: hidden;
+  display: grid; place-items: center; background: var(--panel-2);
+}
 .avatar img { width: 100%; height: 100%; object-fit: cover; }
-.avatar span { font-weight: 700; color: #8aa; }
+.avatar span { font-weight: 700; color: var(--muted); }
 
 .t-main { min-width: 0; }
-.t-row1 { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+.t-row1 {
+  display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+}
 .t-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.t-time { color: #7c8a95; }
-.t-last { color: #9fb1bb; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.t-time { color: #7c8a95; white-space: nowrap; }
+.t-last { color: var(--muted-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .dot { width: 10px; height: 10px; border-radius: 50%; }
-.dot.unread { background: #00a884; }
-.dot.done { background: #2c3e46; }
-.dot.agent { background: #f5a623; }
+.dot.unread { background: var(--accent); }
+.dot.done   { background: #2c3e46; }
+.dot.agent  { background: #f5a623; }
 
-/* ----------------- CHAT ----------------- */
-.chat-head {
-  display: flex; align-items: center; gap: .75rem; padding: .6rem .75rem;
-  background: #111b21;
+/* =========================
+   CHAT
+   ========================= */
+.chatbar {
+  display: flex; align-items: center; gap: .75rem;
+  padding: .6rem .75rem;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  background: var(--panel);
 }
-.icon-btn { background: #1f2c33; color: #e9edef; border: 1px solid rgba(255,255,255,.08); border-radius: 6px; padding: .35rem .6rem; cursor: pointer; }
-.who { display: flex; flex-direction: column; gap: .25rem; }
-.name-row { display: flex; align-items: center; gap: .5rem; }
+.chat-title {
+  display: flex; flex-direction: column; gap: .25rem;
+}
 .name { font-weight: 700; }
-.meta { color: #8aa; font-size: 12px; }
+.meta { color: var(--muted); font-size: 12px; }
 
-.inline-actions { display: flex; flex-wrap: wrap; gap: .5rem; padding: .5rem .75rem; border-bottom: 1px solid rgba(255,255,255,.06); }
+/* Barra de opciones (sheet) – visible como FILA bajo el número en DESKTOP */
+.sheet {
+  display: none;
+}
+.sheet .sheet-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: .35rem .6rem;
+  margin: 0;
+  border: 1px solid rgba(255,255,255,.12);
+  background: var(--panel-2);
+  color: var(--ink);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.sheet .sheet-item + .sheet-item { margin-left: .5rem; }
+.sheet .sheet-item.alt { background: transparent; }
 
-.msgs { padding: .75rem; display: flex; flex-direction: column; gap: .5rem; overflow: auto; height: calc(100% - 56px - 56px); }
+/* Mensajes */
+.msgs {
+  padding: .75rem;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  overflow: auto;
+  background: transparent;
+  min-height: 200px;
+}
 
+/* Globos */
 .bubble { max-width: 85%; padding: .5rem .65rem; border-radius: 12px; }
-.bubble.user  { align-self: flex-start; background: #1f2c33; }
+.bubble.user  { align-self: flex-start; background: var(--panel-2); }
 .bubble.bot   { align-self: flex-end;   background: #005c4b; }
 .bubble.agent { align-self: flex-end;   background: #3c444a; }
 .bubble.sys   { align-self: center;     background: #2b343b; color: #cfd7dc; }
 
+/* Composer */
 .composer {
-  display: grid; grid-template-columns: auto 1fr auto; gap: .5rem;
-  padding: .5rem .75rem; align-items: center; background: #111b21;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: .5rem;
+  padding: .5rem .75rem;
+  align-items: center;
+  border-top: 1px solid rgba(255,255,255,.06);
+  background: var(--panel);
 }
+.left-actions { display: inline-flex; align-items: center; gap: .5rem; }
 #box {
-  width: 100%; resize: none; min-height: 42px; max-height: 160px;
-  padding: .5rem .6rem; border-radius: 8px;
-  background: #0b141a; color: #e9edef; border: 1px solid rgba(255,255,255,.08);
+  width: 100%;
+  resize: none;
+  min-height: 42px;
+  max-height: 180px;
+  padding: .5rem .6rem;
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--ink);
+  border: 1px solid rgba(255,255,255,.08);
 }
-.attach, .send { min-width: 42px; height: 42px; display: grid; place-items: center; }
+#attachBtn, #send { min-width: 42px; height: 42px; display: grid; place-items: center; }
 
-/* Scrollbars discretos */
+/* Scrollbars */
 *::-webkit-scrollbar { width: 10px; height: 10px; }
 *::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 999px; }
+
+/* =========================
+   DESKTOP (>=1024px)
+   ========================= */
+@media (min-width: 1024px) {
+  /* Estructura: topbar fija + dos columnas lado a lado */
+  .app {
+    display: grid;
+    grid-template-columns: 380px 1fr;    /* lista + chat */
+    grid-auto-rows: minmax(0, 1fr);
+    column-gap: 0;
+  }
+
+  /* Ambas vistas visibles; compensar topbar fija */
+  .view {
+    display: block;
+    height: calc(100dvh - var(--topbar-h));
+    overflow: auto;
+  }
+
+  /* La barra del chat (cabecera) pegada arriba del panel de chat */
+  .view-chat .chatbar {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+
+  /* La hoja de acciones se muestra como FILA debajo del número (no modal) */
+  .sheet {
+    display: flex;             /* visible en desktop */
+    flex-wrap: wrap;
+    gap: .5rem;
+    padding: .5rem .75rem;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+    background: transparent;
+  }
+  /* Ocultar botón + en desktop (porque las acciones ya están visibles) */
+  #moreBtn { display: none; }
+
+  /* Mensajes ocupan el alto restante del panel de chat */
+  .view-chat .msgs {
+    height: calc(100dvh - var(--topbar-h) - var(--chatbar-h) - var(--composer-min-h) - 1px);
+    overflow: auto;
+  }
+
+  /* Composer anclado al final del panel de chat (no al lado) */
+  .view-chat .composer {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    min-height: var(--composer-min-h);
+  }
+
+  /* Mostrar ambos paneles; no dependemos de .active en desktop */
+  .view-list.active,
+  .view-chat.active { display: block; }
+}
+
+/* =========================
+   MÓVIL (<1024px)
+   ========================= */
+@media (max-width: 1023px) {
+  .only-mobile { display: inline; }
+  .only-desktop { display: none; }
+
+  /* En móvil, sólo una vista a la vez */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* La topbar NO es fija a pantalla completa en móvil (la mantenemos dentro de la lista) */
+  .topbar {
+    position: static;
+    width: 100%;
+  }
+  .safe-top { padding-top: 0; }
+
+  /* Chat: cabecera y composer pegados; mensajes con altura calculada */
+  .view-chat .chatbar {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--bg);
+    border-bottom: 1px solid rgba(255,255,255,.06);
+  }
+
+  .view-chat .composer {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    background: var(--bg);
+    border-top: 1px solid rgba(255,255,255,.06);
+  }
+
+  /* Altura de mensajes = alto de la pantalla menos cabeceras y composer */
+  .view-chat .msgs {
+    max-height: calc(100dvh - var(--chatbar-h) - var(--composer-min-h));
+    overflow: auto;
+  }
+
+  /* En móvil, la hoja de acciones funciona como “sheet” desplegable */
+  .sheet {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 40;
+    background: rgba(17,27,33,.98);
+    border-top: 1px solid rgba(255,255,255,.08);
+    padding: .75rem;
+    display: none;
+  }
+  .sheet.show { display: block; }
+
+  .sheet .sheet-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    border-radius: 8px;
+    margin: 0 0 .5rem 0;
+  }
+  .sheet .sheet-item + .sheet-item { margin-left: 0; }
+}
+
+/* =========================
+   ACCESORIOS
+   ========================= */
+.icon-btn[aria-label="Volver"] { min-width: 42px; height: 42px; }
+
+.drag { outline: 2px dashed rgba(255,255,255,.25); outline-offset: -6px; }
+
+/* Asegurar que los textos largos de filtros no se corten */
+.seg, .sheet .sheet-item { white-space: nowrap; }
