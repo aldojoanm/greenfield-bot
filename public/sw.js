@@ -1,4 +1,4 @@
-const CACHE = 'inbox-greenfield-v7'; // bump cache para forzar actualización
+const CACHE = 'inbox-greenfield-v8'; // bump para forzar actualización
 const APP_SHELL = [
   './agent.html',
   './agent.css',
@@ -22,7 +22,7 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
-  if (req.headers.get('accept')?.includes('text/event-stream')) return;
+  if (req.headers.get('accept')?.includes('text/event-stream')) return; // no cachear SSE
 
   const url = new URL(req.url);
   const isShell = url.pathname.endsWith('/agent.html') || APP_SHELL.some(p => url.pathname.endsWith(p.replace('./','/')));

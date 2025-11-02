@@ -34,7 +34,7 @@ const segBtns    = Array.from(document.querySelectorAll('.segmented .seg'));
 const attachBtn  = document.getElementById('attachBtn');
 const enablePushBtn = document.getElementById('enablePush');
 
-// móvil
+// móvil (se mantiene)
 const mobileFab  = document.getElementById('mobileFab');
 const mobileSheet= document.getElementById('mobileActions');
 
@@ -78,9 +78,7 @@ function deviceId(){
 const api = {
   token: localStorage.getItem(LS_TOKEN) || '',
   tokenAt: Number(localStorage.getItem(LS_TOKENAT) || 0),
-  headers(){
-    return { 'Authorization':'Bearer '+this.token, 'Content-Type':'application/json', 'X-Device': deviceId() };
-  },
+  headers(){ return { 'Authorization':'Bearer '+this.token, 'Content-Type':'application/json', 'X-Device': deviceId() }; },
   isExpired(){ return !this.tokenAt || (Date.now() - this.tokenAt) > TOKEN_TTL_MS; },
   persist(t){ this.token=t; this.tokenAt=Date.now(); localStorage.setItem(LS_TOKEN,t); localStorage.setItem(LS_TOKENAT,String(this.tokenAt)); },
   clear(){ this.token=''; this.tokenAt=0; localStorage.removeItem(LS_TOKEN); localStorage.removeItem(LS_TOKENAT); },
@@ -152,7 +150,7 @@ async function forceReauth(){
   const ok = await requestToken(true); if (ok) await refresh(true);
 }
 
-/* foreground */
+/* Reconectar foreground */
 document.addEventListener('visibilitychange', ()=>{ if (document.visibilityState === 'visible'){ setConn('wait','reconectando'); startSSE(); refresh(false); }});
 window.addEventListener('pageshow', (e)=>{ if (e.persisted){ startSSE(); refresh(false); }});
 
@@ -179,7 +177,7 @@ function renderThreads(){
     let lastTxt = String(c.last || lastMem?.content || '').replace(/\n/g,' ');
     const lastRole = lastMem?.role;
     const prefix = lastRole==='bot' || lastRole==='agent' ? 'You: ' : (c.name ? `${c.name}: ` : '');
-    if (lastTxt) lastTxt = (prefix + lastTxt).slice(0,140);
+    if (lastTxt) lastTxt = (prefix + lastTxt).slice(0,260); // más largo
 
     const ts = c.ts || lastMem?.ts; const when = ts ? timeAgo(ts) : '';
     const dot = statusDot(c);
@@ -218,7 +216,6 @@ function renderMsgs(mem){
     else div.textContent = txt;
     msgsEl.appendChild(div);
   }
-  // autoscroll
   msgsEl.scrollTop = msgsEl.scrollHeight;
 }
 
@@ -226,8 +223,8 @@ async function openChat(id){
   try{
     const res = await api.history(normId(id));
     current = {...res, id:normId(res.id)};
-    chatName.textContent = current.name || current.id;
-    chatMeta.textContent = current.phone ? current.phone : current.id;
+    chatName.textContent = current.name || current.id;     // 1ª línea
+    chatMeta.textContent = current.phone ? current.phone : current.id; // 2ª línea
     document.getElementById('status').style.display = current.human ? 'inline-block' : 'none';
     renderMsgs(current.memory||[]);
     await api.read(current.id).catch(()=>{});
@@ -240,7 +237,7 @@ async function openChat(id){
 }
 backBtn?.addEventListener('click', ()=>{ current=null; viewChat.classList.remove('active'); viewList.classList.add('active'); });
 
-/* Acciones rápidas (handlers compartidos) */
+/* Acciones (compartidas) */
 async function do_takeHuman(){ if(!current) return; await api.handoff(current.id,'human'); document.getElementById('status').style.display='inline-block'; }
 async function do_resumeBot(){ if(!current) return; await api.handoff(current.id,'bot'); document.getElementById('status').style.display='none'; }
 async function do_markRead(){ if(!current) return; await api.read(current.id); refresh(false); }
@@ -272,7 +269,7 @@ async function do_sendQR(){
 }
 async function do_sendAccounts(){ if (!current) return; await api.send(current.id, ACCOUNTS_TEXT); }
 
-/* Hook de botones de escritorio */
+/* Hook botones escritorio (fila bajo número) */
 document.getElementById('takeHuman')?.addEventListener('click', do_takeHuman);
 document.getElementById('resumeBot')?.addEventListener('click', do_resumeBot);
 document.getElementById('markRead')?.addEventListener('click', do_markRead);
@@ -281,10 +278,8 @@ document.getElementById('sendQR')?.addEventListener('click', do_sendQR);
 document.getElementById('sendAccounts')?.addEventListener('click', do_sendAccounts);
 
 /* Envío mensajes */
-document.getElementById('send').onclick = async ()=>{
-  const txt = box.value.trim(); if(!txt || !current) return; box.value=''; await api.send(current.id, txt);
-};
-box.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); document.getElementById('send').click(); } });
+sendBtn.onclick = async ()=>{ const txt = box.value.trim(); if(!txt || !current) return; box.value=''; await api.send(current.id, txt); };
+box.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendBtn.click(); } });
 
 attachBtn.onclick = ()=> fileInput.click();
 fileInput.onchange = async (e)=>{
@@ -327,13 +322,12 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-/* ===== Push ===== */
+/* ===== Push (móvil) ===== */
 async function maybeEnablePush(){
   const ok = ('Notification' in window) && ('serviceWorker' in navigator) && ('PushManager' in window);
   if (!enablePushBtn) return;
   enablePushBtn.style.display = ok ? 'inline-block' : 'none';
   if (!ok) return;
-
   enablePushBtn.addEventListener('click', requestPush);
 }
 
@@ -346,20 +340,18 @@ async function requestPush(){
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     if (isIOS && !isStandalone) {
-      alert('En iPhone: “Añadir a pantalla de inicio” y abrir desde el ícono para poder activar notificaciones.');
+      alert('En iPhone: “Añadir a pantalla de inicio” y abrir desde el ícono para activar notificaciones.');
       return;
     }
-
     const perm = await Notification.requestPermission();
     if (perm !== 'granted') { alert('No se concedió permiso de notificaciones.'); return; }
 
     const reg = await navigator.serviceWorker.ready;
-    const vapidPublicKey = (window.PUSH_VAPID || 'BEl0...TU_CLAVE...xQ');
+    const vapidPublicKey = (window.PUSH_VAPID || 'BEl0...TU_CLAVE...xQ'); // <-- reemplazar por tu VAPID público
     const sub = await reg.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
     });
-
     await fetch('/push/subscribe', { method:'POST', headers: api.headers(), body: JSON.stringify(sub) });
     alert('✅ Notificaciones activadas.');
   } catch (err) {
@@ -367,7 +359,6 @@ async function requestPush(){
     alert('No se puede activar notificaciones en este dispositivo.');
   }
 }
-
 function urlBase64ToUint8Array(base64String){
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -381,7 +372,7 @@ function urlBase64ToUint8Array(base64String){
 window.addEventListener('offline', ()=> setConn('off','sin red'));
 window.addEventListener('online',  ()=> { setConn('wait','reconectando'); startSSE(); });
 
-/* ===== FAB & Sheet (móvil) ===== */
+/* ===== FAB & Sheet (móvil – se mantiene igual) ===== */
 function toggleSheet(open){
   if (!mobileSheet) return;
   const willOpen = (open ?? !mobileSheet.classList.contains('open'));
