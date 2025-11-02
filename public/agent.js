@@ -286,3 +286,42 @@ document.getElementById('sendAccounts').onclick = async ()=>{
   await refresh(true);
   setInterval(()=>{ if (api.isExpired()) forceReauth(); }, 60*1000);
 })();
+
+// ====== PWA: registrar SW & botón “Instalar” ======
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/public/sw.js').catch(()=>{});
+  });
+}
+
+// Banner de instalación (Add to Home Screen)
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+
+  // botón flotante
+  const btn = document.createElement('button');
+  btn.textContent = 'Instalar';
+  btn.className = 'btn sm';
+  btn.style.position = 'fixed';
+  btn.style.right = '12px';
+  btn.style.bottom = '12px';
+  btn.style.zIndex = '9999';
+  document.body.appendChild(btn);
+
+  btn.onclick = async () => {
+    btn.disabled = true;
+    try {
+      await deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+    } finally {
+      btn.remove();
+      deferredPrompt = null;
+    }
+  };
+});
+
+// Estado online/offline (backup visual)
+window.addEventListener('offline', ()=> { try{ setConn('off', 'sin red'); }catch{} });
+window.addEventListener('online',  ()=> { try{ setConn('wait', 'reconectando'); startSSE(); }catch{} });

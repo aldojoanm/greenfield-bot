@@ -1,0 +1,19 @@
+{
+  "name": "Inbox — Greenfield",
+  "short_name": "Inbox",
+  "start_url": "/public/agent.html",
+  "scope": "/public/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b141a",
+  "theme_color": "#00a884",
+  "description": "Bandeja de asesor con bot/humano, WhatsApp import y envío de archivos.",
+  "icons": [
+    { "src": "/public/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/public/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/public/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable any" }
+  ],
+  "shortcuts": [
+    { "name": "Abrir Inbox", "url": "/public/agent.html", "short_name": "Inbox" }
+  ]
+}
