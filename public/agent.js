@@ -277,7 +277,8 @@ async function doSendQR(){
   if (!current) return;
   const QR_URLS = [BRAND_QR, './qr-pagos.png'];
   let blob = null, mime = 'image/png';
-  for (const u of QR_URLS){ try{ const r = await fetch(u); if (r.ok){ blob = await r.blob(); mime = blob.type || mime; break; } }catch{} }
+  for (const u of QR_URLS){ try{ const r = await fetch(u); if (r.ok){ blob = await r.blob(); mime = blob.type || mime; break; } }catch{}
+  }
   if (!blob){ alert('No encontré el archivo QR.'); return; }
   const file = new File([blob], 'qr-pagos.png', { type: mime });
   await api.sendMedia(current.id, [file], '');
@@ -358,6 +359,9 @@ function adjustDesktopControls(){
   }
 }
 window.addEventListener('resize', adjustDesktopControls);
+
+/* === Salir: limpiar credenciales y forzar login nuevamente === */
+logoutBtn.onclick = ()=>{ api.clear(); localStorage.removeItem(LS_DEVID); location.reload(); };
 
 // Bootstrap
 (async function(){

@@ -70,7 +70,7 @@ body{background:var(--bg);color:var(--ink);font:14px/1.4 system-ui,-apple-system
 
 /* ======= SOLO DESKTOP ======= */
 @media (min-width:1024px){
-  /* Layout 2 columnas: lista izquierda fija + chat derecha a pantalla completa */
+  /* Layout 2 columnas: lista izquierda + chat derecha */
   .app{
     display:grid;
     grid-template-columns:380px 1fr;
@@ -80,35 +80,36 @@ body{background:var(--bg);color:var(--ink);font:14px/1.4 system-ui,-apple-system
 
   .view-list{
     display:block;
+    /* descuenta la topbar fija y empuja debajo de ella */
     height:calc(100dvh - var(--topbar-h));
     overflow:hidden;
+    margin-top:var(--topbar-h);
   }
 
-  /* ⚙️ Panel derecho como GRID: header / acciones / mensajes / composer */
+  /* Panel derecho debajo de la topbar, y como grid:
+     chatbar / acciones / mensajes / composer */
   .view-chat{
     border-left:1px solid rgba(255,255,255,.10);
-    height:100dvh;
+    margin-top:var(--topbar-h);
+    height:calc(100dvh - var(--topbar-h));
     display:grid;
-    grid-template-rows: var(--chatbar-h) 48px 1fr auto; /* <- composer al fondo */
+    grid-template-rows: var(--chatbar-h) 48px 1fr auto; /* composer al fondo */
     overflow:hidden;
   }
 
-  /* Ya no sticky/fixed: el grid los posiciona */
   .view-chat .chatbar{position:relative}
   .sheet-row{position:relative;background:transparent}
 
-  /* El área de mensajes ocupa todo el espacio libre */
   .view-chat .msgs{
     position:relative;
     padding:.75rem;
     overflow:auto;
   }
 
-  /* Composer en la última fila, pegado abajo y 100% de ancho */
   .view-chat .composer{
-    position:relative;  /* nada de absolute/fixed */
+    position:relative;
     min-height:var(--composer-min-h);
-    margin:0;
+    margin:0; /* queda pegado abajo por la fila 'auto' */
   }
 
   .bubble{max-width:min(60ch,52%)}
