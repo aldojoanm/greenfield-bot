@@ -325,21 +325,29 @@ app.post('/wa/webhook', async (req, res) => {
 });
 
 // ====== Arranque ======
-const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || '0.0.0.0';
+const PORT = Number(process.env.PORT || 3000);
 
 (async () => {
-  // 1) Arranca Telegram
-  await startTelegramBridge();
+  // 1) Arranca Telegram (no debe impedir levantar HTTP)
+  try {
+    const wantTG = !!process.env.TG_BOT_TOKEN && !!process.env.TG_ADMIN_CHAT_ID;
+    if (wantTG) {
+      const { startTelegramBridge } = await import('./telegram-bridge.js');
+      await startTelegramBridge();
+      console.log('[TG] Bridge activo');
+    } else {
+      console.log('[TG] Bridge omitido: faltan TG_BOT_TOKEN o TG_ADMIN_CHAT_ID');
+    }
+  } catch (err) {
+    console.error('[TG] Error al iniciar (continuo sin TG):', err?.message || err);
+  }
 
-  // 2) HTTP
-  app.listen(PORT, () => {
-    console.log(`🚀 Server escuchando en :${PORT}`);
-    console.log('   • Messenger:        GET/POST /webhook');
-    console.log('   • WhatsApp:         GET/POST /wa/webhook (o tu waRouter)');
-    console.log('   • Inbox UI:         GET       /inbox');
-    console.log('   • Inbox API:        /wa/agent/* (convos, history, send, read, handoff, send-media, import-whatsapp, stream)');
-    console.log('   • Prices JSON:      GET       /api/prices (pricesRouter)');
-    console.log('   • Catalog JSON:     GET       /api/catalog (Hoja PRECIOS)');
-    console.log('   • Health:           GET       /healthz');
+  // 2) HTTP (bind explícito a 0.0.0.0)
+  app.listen(PORT, HOST, () => {
+    console.log(`🚀 Web service escuchando en http://${HOST}:${PORT}`);
+    console.log('   • Health check:     GET /healthz');
+    console.log('   • Inbox UI:         GET /inbox');
+    console.log('   • API WA Agent:     /wa/agent/*');
   });
 })();
