@@ -6,6 +6,7 @@ import { appendFromSession, parseAndAppendClientResponse } from './sheets.js';
 import { appendChatHistoryRow, purgeOldChatHistory } from './sheets.js';
 import { sendAutoQuotePDF } from './quote.js';
 import { getClientByPhone, upsertClientByPhone } from './sheets.js';
+import { notifyNewTextFromWA } from './telegram-bridge.js';
 
 const router = express.Router();
 router.use(express.json());
@@ -38,7 +39,6 @@ const CAMP_VERANO_MONTHS = (process.env.CAMPANA_VERANO_MONTHS || '10,11,12,1,2,3
 const CAMP_INVIERNO_MONTHS = (process.env.CAMPANA_INVIERNO_MONTHS || '4,5,6,7,8,9')
   .split(',').map(n => +n.trim()).filter(Boolean);
 
-/* ========= utilidades (¡ahora primero!) ========= */
 const norm  = (t='') => t.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu,'');
 const title = s => String(s||'').replace(/\w\S*/g, w => w[0].toUpperCase()+w.slice(1).toLowerCase());
 const clamp = (t, n=20) => (String(t).length<=n? String(t) : String(t).slice(0,n-1)+'…');
@@ -85,15 +85,13 @@ function guessMimeByExt(filePath='') {
   };
   return map[ext] || 'application/octet-stream';
 }
-/* =============================================== */
-// ===== Flujo efímero del ASESOR (no persiste en disco) =====
-const ADVISOR_FLOWS = new Map(); // fromId -> { step:'ask_all', s }
+
+const ADVISOR_FLOWS = new Map();
 const advFlow  = (id)=> ADVISOR_FLOWS.get(id) || null;
 const advSet   = (id, f)=> ADVISOR_FLOWS.set(id, f);
 const advReset = (id)=> ADVISOR_FLOWS.delete(id);
 
 function parseAdvisorForm(text=''){
-  // 1) Intento con etiquetas (como ya tenías)
   const get = (label)=>{
     const re = new RegExp(`^\\s*${label}\\s*:\\s*(.+)$`, 'im');
     const m = text.match(re);
@@ -103,7 +101,6 @@ function parseAdvisorForm(text=''){
   let depRaw = get('DEPARTAMENTO');
   let zonaRaw= get('ZONA');
 
-  // 2) Si falta algo, intento modo libre por líneas
   if (!nombre || !depRaw || (!zonaRaw)) {
     const lines = String(text)
       .split(/\r?\n+/)
@@ -111,23 +108,17 @@ function parseAdvisorForm(text=''){
       .filter(Boolean);
 
     for (const ln of lines) {
-      // departamento conocido
       const dep = detectDepartamento(ln);
       if (!depRaw && dep) { depRaw = dep; continue; }
-
-      // nombre “parece nombre completo”
       if (!nombre && looksLikeFullName(ln)) { nombre = canonName(ln); continue; }
-
-      // zona (si SCZ, valida subzona; si no, toma la línea como zona libre)
       if (!zonaRaw) {
         const maybeSub = detectSubzona(ln);
         if (maybeSub) zonaRaw = maybeSub;
-        else if (!/^\d+(\.\d+)?$/.test(ln)) zonaRaw = title(ln); // zona libre
+        else if (!/^\d+(\.\d+)?$/.test(ln)) zonaRaw = title(ln);
       }
     }
   }
 
-  // Normalizaciones
   if (depRaw){
     const t = norm(depRaw);
     const canon = DEPARTAMENTOS.find(d => norm(d) === t);
@@ -169,7 +160,6 @@ async function advFinalize(fromId){
   const flow = advFlow(fromId); if(!flow) return;
   const s = flow.s;
 
-  // ── DEDUPE: si ya se envió PDF en esta conversación, no repetir
   s.meta = s.meta || {};
   if (s.meta.pdfSent) {
     await toText(fromId, 'Ya generé la cotización del cliente ✅');
@@ -177,7 +167,7 @@ async function advFinalize(fromId){
     advReset(fromId);
     return;
   }
-  if (s.meta.finalizing) return;            // evitar doble entrada concurrente
+  if (s.meta.finalizing) return;
   s.meta.finalizing = true; persistS(fromId);
 
   try {
@@ -201,20 +191,19 @@ async function advFinalize(fromId){
           messaging_product:'whatsapp', to: fromId, type:'document',
           document:{ id: mediaId, filename: (pdfInfo?.filename || 'Cotizacion.pdf'), caption: `Cotización — ${s.profileName || 'Cliente'}` }
         });
-        s.meta.pdfSent = true;           
+        s.meta.pdfSent = true;
         persistS(fromId);
       } else {
         await toText(fromId, '⚠️ No pude adjuntar el PDF (mediaId/path vacío).');
       }
     } catch(e){ console.error('[ADV] enviar PDF', e); }
 
-    await sendPostFinalizeMenu(fromId);    // <<<<<< menú final
-    advReset(fromId);                      // flujo efímero fuera
+    await sendPostFinalizeMenu(fromId);
+    advReset(fromId);
   } finally {
     s.meta.finalizing = false; persistS(fromId);
   }
 }
-
 
 function monthInTZ(tz = TZ){
   try{
@@ -222,7 +211,7 @@ function monthInTZ(tz = TZ){
       .formatToParts(new Date());
     return +parts.find(p => p.type === 'month').value;
   }catch{
-    return (new Date()).getMonth() + 1; // 1..12
+    return (new Date()).getMonth() + 1;
   }
 }
 
@@ -269,7 +258,6 @@ function agentAuth(req,res,next){
 function loadJSON(p){ try { return JSON.parse(fs.readFileSync(p,'utf8')); } catch { return {}; } }
 const CATALOG = loadJSON('./knowledge/catalog.json');
 
-/* ========= índice por ingrediente activo (usa norm ya definida) ========= */
 function buildActiveIndex(list){
   const map = new Map();
   for (const p of list){
@@ -295,7 +283,6 @@ function buildActiveIndex(list){
     }
   }
 
-  // Sinónimos/mapeos esperados con productos actuales
   const EXTRA = {
     'glifosato': ['GLISATO'],
     'paraquat':  ['DRIER', 'paraquat'],
@@ -325,7 +312,6 @@ const ACTIVE_INDEX = buildActiveIndex(Array.isArray(CATALOG) ? CATALOG : []);
 
 function findByActiveIngredient(text){
   const t = norm(text);
-  // intenta match exacto de palabra
   for (const key of ACTIVE_INDEX.keys()){
     if (new RegExp(`\\b${key}\\b`).test(t)) {
       const arr = ACTIVE_INDEX.get(key);
@@ -561,7 +547,6 @@ function detectSubzona(text){
   return null;
 }
 
-// Adaptado a GREENFIELD (sin rastros de New Chem)
 const wantsCatalog  = t => /cat[aá]logo|portafolio|lista de precios/i.test(t) || /portafolio[- _]?greenfield/i.test(norm(t));
 const wantsLocation = t => /(ubicaci[oó]n|direcci[oó]n|mapa|d[oó]nde est[aá]n|donde estan)/i.test(t);
 const wantsClose    = t => /(no gracias|gracias|eso es todo|listo|nada m[aá]s|ok gracias|est[aá] bien|finalizar)/i.test(norm(t));
@@ -824,7 +809,7 @@ function toNumberFlexible(x=''){
 
   if (hasDot && hasComma){
     const lastDot = s.lastIndexOf('.');
-    const lastComma = s.lastIndexOf(',');
+       const lastComma = s.lastIndexOf(',');
     if (lastComma > lastDot){
       return Number(s.replace(/\./g,'').replace(',','.'));
     } else {
@@ -840,20 +825,14 @@ function toNumberFlexible(x=''){
 
 function parseCartFromText(text=''){
   const lines = String(text).split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-
-  // Encabezados válidos (nuevo + legacy) — ahora GREENFIELD
   const headerOK = /^(PEDIDO GREENFIELD|CART_V1 GREENFIELD|CARRITO GREENFIELD)/i.test(lines[0] || '');
   if (!headerOK) return null;
 
   const items = [];
   let totalUsd = null, totalBs = null;
 
-  // Ítems:
-  // "* NOMBRE (PRES) — 10 L — SUBTOTAL: US$ 100.00 · Bs 696.00"
-  // También acepta el legacy: "... — SUBTOTAL: $100.00"
   const reItem = /^\*\s*(.+?)(?:\s*\((.+?)\))?\s*—\s*([\d.,]+)\s*(l|lt|lts|litros?|kg|kilos?|unid|unidad(?:es)?)?(?:\s*—\s*SUBTOTAL\s*:\s*(?:U?S?\$?\s*([\d.,]+))(?:\s*[·,]\s*Bs\s*([\d.,]+))?)?$/i;
 
-  // Totales (con o sin guion bajo, con o sin ":")
   const reTotUsd = /^TOTAL[_\s]?USD\s*:?\s*([\d.,]+)/i;
   const reTotBs  = /^TOTAL[_\s]?BS\s*:?\s*([\d.,]+)/i;
 
@@ -937,17 +916,14 @@ async function nextStep(to){
     const stale = (key)=> s.lastPrompt===key && (Date.now()-s.lastPromptTs>25000);
     if (s.pending && !stale(s.pending)) return;
 
-    // nombre
     if ((!s.asked.nombre) && (s.meta.origin!=='messenger' || !s.profileName)) {
       if(stale('nombre') || s.lastPrompt!=='nombre') return askNombre(to);
       return;
     }
-    // departamento
     if(!s.vars.departamento){
       if(stale('departamento') || s.lastPrompt!=='departamento') return askDepartamento(to);
       return;
     }
-    // subzona
     if(!s.vars.subzona){
       if(s.vars.departamento==='Santa Cruz'){
         if(stale('subzona') || s.lastPrompt!=='subzona') return askSubzonaSCZ(to);
@@ -956,12 +932,10 @@ async function nextStep(to){
       }
       return;
     }
-    // cultivo
     if(!s.vars.cultivos || s.vars.cultivos.length===0){
       if(stale('cultivo') || s.lastPrompt!=='cultivo') return askCultivo(to);
       return;
     }
-    // hectáreas
     if(!s.vars.hectareas){
       if(stale('hectareas') || s.lastPrompt!=='hectareas') return askHectareas(to);
       return;
@@ -1102,11 +1076,17 @@ function compileAdvisorAlert(s, customerWa){
   ].join('\n');
 }
 
-
 const processed = new Map();
 const PROCESSED_TTL = 5 * 60 * 1000;
 setInterval(()=>{ const now=Date.now(); for(const [k,ts] of processed){ if(now-ts>PROCESSED_TTL) processed.delete(k); } }, 60*1000);
 function seenWamid(id){ if(!id) return false; const now=Date.now(); const old=processed.get(id); processed.set(id,now); return !!old && (now-old)<PROCESSED_TTL; }
+
+function notifyTGInboundFallback({ id, name, phone, msgType, text, caption }) {
+  const payload = (text && text.trim())
+    ? text
+    : (`📎 ${msgType || 'archivo'}${caption ? `: ${caption}` : ''}`);
+  try { return notifyNewTextFromWA({ id, name, phone, text: payload }); } catch {}
+}
 
 router.post('/wa/webhook', async (req,res)=>{
   try{
@@ -1136,8 +1116,15 @@ router.post('/wa/webhook', async (req,res)=>{
     const IS_VENDOR = Boolean(req?._fromHubVendor) || isAdvisor(fromId) || isInVendorsMap(fromId);
     dbg('[HOOK]', { rawFrom, fromId, isVendor: IS_VENDOR });
 
+    const contactName = value?.contacts?.[0]?.profile?.name || s.profileName || '';
+    if (msg.type === 'text' && textRaw) {
+      await notifyNewTextFromWA({ id: fromId, name: contactName, phone: rawFrom, text: textRaw });
+    } else if (['image','video','audio','document','sticker','location','contacts'].includes(msg.type)) {
+      const caption = msg[msg.type]?.caption || '';
+      await notifyTGInboundFallback({ id: fromId, name: contactName, phone: rawFrom, msgType: msg.type, text: '', caption });
+    }
+
 if (flowActive && parsedCart) {
-  // se pegó el carrito dentro del flujo de asesor
   flowActive.s.vars.cart = parsedCart.items || [];
   advSet(fromId, flowActive);
   await toText(fromId,
@@ -1174,14 +1161,12 @@ if (flowActive && msg.type === 'text') {
   flowActive.s.vars.subzona      = zona || flowActive.s.vars.subzona || 'ND';
   advSet(fromId, flowActive);
 
-  await advFinalize(fromId);   // genera y envía el PDF
+  await advFinalize(fromId);
   return res.sendStatus(200);
 }
 
-// ===== Menú post-finalización (se muestra después de enviar la cotización) =====
 async function sendPostFinalizeMenu(to) {
   try {
-    // Texto de cierre breve
     await toText(to, '¿Deseas hacer algo más?');
     await toButtons(to, 'Opciones rápidas', [
       { title: 'Seguir cotizando', payload: 'QR_SEGUIR' },
@@ -1347,7 +1332,7 @@ if (parsedCart && !IS_VENDOR && !advFlow(fromId)) {
           const u = new URL(referral?.deeplink_url || referral?.source_url || '');
           const q = (k)=>u.searchParams.get(k);
           const sku = q('sku') || q('SKU');
-          const pn  = q('product') || q('producto') || q('p') || q('ref');
+          const pn  = q('product') || q('producto') || 'p' || 'ref';
           if(sku){
             byQS = (Array.isArray(CATALOG)?CATALOG:[]).find(p=>String(p.sku).toLowerCase()===String(sku).toLowerCase()) || null;
           }
@@ -1398,11 +1383,10 @@ if (parsedCart && !IS_VENDOR && !advFlow(fromId)) {
         remember(fromId, 'user', `✅ ${id}`);
       }
 if (id === 'QR_FINALIZAR') {
-  // ── DEDUPE: no generar/enviar PDF dos veces
   s.meta = s.meta || {};
   if (s.meta.pdfSent) {
     await toText(fromId, 'Ya te envié la *cotización en PDF* ✅');
-    await sendPostFinalizeMenu(fromId);      // <<<<<< menú final
+    await sendPostFinalizeMenu(fromId);
     res.sendStatus(200);
     return;
   }
@@ -1441,7 +1425,6 @@ if (id === 'QR_FINALIZAR') {
     }
 
     await toText(fromId, '¡Gracias por escribirnos! Te envío la *cotización en PDF*. Si requieres más información, estamos a tu disposición.');
-    // Enviar el PDF (smart upload evita duplicados por ruta/buffer)
     try {
       const mediaId = await waUploadPDFSmart(pdfInfo, 'Cotizacion.pdf');
       if (mediaId) {
@@ -1451,14 +1434,13 @@ if (id === 'QR_FINALIZAR') {
           type: 'document',
           document: { id: mediaId, filename: (pdfInfo?.filename || 'Cotizacion.pdf'), caption: 'Cotización' }
         });
-        s.meta.pdfSent = true;             // <<<<<< marca como enviado
+        s.meta.pdfSent = true;
         persistS(fromId);
       }
     } catch (e) {
       console.error('enviar PDF final error:', e);
     }
 
-    // Aviso a asesores (igual que ya tenías)
     if (ADVISOR_WA_NUMBERS.length) {
       const txt = compileAdvisorAlert(S(fromId), fromId);
       for (const advisor of ADVISOR_WA_NUMBERS) {
@@ -1479,7 +1461,7 @@ if (id === 'QR_FINALIZAR') {
     persistS(fromId);
     broadcastAgent('convos', { id: fromId });
 
-    await sendPostFinalizeMenu(fromId);     // <<<<<< menú final
+    await sendPostFinalizeMenu(fromId);
 
     res.sendStatus(200);
     return;
@@ -1543,7 +1525,7 @@ if (id === 'QR_FINALIZAR') {
         if (code === 'verano')   s.vars.campana = 'Verano';
         else if (code === 'invierno') s.vars.campana = 'Invierno';
         s.meta = s.meta || {};
-        s.meta.campanaUpdatedAt = Date.now();
+               s.meta.campanaUpdatedAt = Date.now();
         s.asked.campana = true;
 
         s.pending = null;
@@ -1582,7 +1564,6 @@ if (id === 'QR_FINALIZAR') {
           return res.sendStatus(200);
         }
 
-        // Si NO es primer mensaje, solo muestra link si ya completamos discovery/cliente conocido
         await showProduct(fromId, prodByIA, {
           withLink: canLink,
           preface: canLink ? null : `Con mucho gusto te envío la *ficha técnica* de *${prodByIA.nombre}* 👇`
@@ -1593,7 +1574,6 @@ if (id === 'QR_FINALIZAR') {
           return res.sendStatus(200);
         }
       }
-
 
       const tnorm = norm(text);
       if (leadData) {
