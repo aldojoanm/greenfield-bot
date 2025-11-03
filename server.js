@@ -11,7 +11,7 @@ import pricesRouter from './prices.js';
 import waRouter from './wa.js';
 import vendorsRouter from './wa.vendedores.js';
 
-// Helpers de Sheets
+// Sheets helpers
 import {
   summariesLastNDays,
   historyForIdLastNDays,
@@ -19,6 +19,7 @@ import {
   readPrices
 } from './sheets.js';
 
+/* ---------- Config básica ---------- */
 const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
@@ -28,29 +29,34 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
 const TZ = process.env.TIMEZONE || 'America/La_Paz';
 
-// Static
+/* ---------- Errores globales (para no colgarnos silenciosamente) ---------- */
+process.on('unhandledRejection', (r) => {
+  console.error('[unhandledRejection]', r);
+});
+process.on('uncaughtException', (e) => {
+  console.error('[uncaughtException]', e);
+});
+
+/* ---------- Static / UI ---------- */
 app.use('/image', express.static(path.join(__dirname, 'image')));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Inbox UI
 app.get('/inbox', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'agent.html'));
 });
 
-// Básicas
+/* ---------- Health / raíz ---------- */
 app.get('/', (_req, res) => res.send('OK'));
-app.get('/healthz', (_req, res) => res.json({ ok: true }));
-app.get('/privacidad', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'privacidad.html'));
-});
+app.get('/healthz', (_req, res) => res.json({ ok: true, ts: Date.now() }));
+app.get('/__ping', (_req, res) => res.type('text').send('pong'));
 
-// Routers
+/* ---------- Routers ---------- */
 app.use(vendorsRouter);
 app.use(messengerRouter);
 app.use(waRouter);
 app.use(pricesRouter);
 
-// ====== API catálogo desde Hoja PRECIOS ======
+/* ---------- API catálogo ---------- */
 app.get('/api/catalog', async (_req, res) => {
   try {
     const { prices = [], rate = 6.96 } = await readPrices();
@@ -76,24 +82,19 @@ app.get('/api/catalog', async (_req, res) => {
       };
       cur.categoria = cur.categoria || categoria;
       if (presentacion || unidad || usd || bs) {
-        cur.variantes.push({
-          presentacion: presentacion || '',
-          unidad,
-          precio_usd: usd,
-          precio_bs: bs
-        });
+        cur.variantes.push({ presentacion: presentacion || '', unidad, precio_usd: usd, precio_bs: bs });
       }
       byProduct.set(producto, cur);
     }
     const items = [...byProduct.values()].sort((a,b)=>a.nombre.localeCompare(b.nombre,'es'));
     res.json({ ok:true, rate, items, count: items.length, source:'sheet:PRECIOS' });
   } catch (e) {
-    console.error('[catalog] from prices error:', e);
+    console.error('[catalog] error:', e);
     res.status(500).json({ ok:false, error:'catalog_unavailable' });
   }
 });
 
-// ====== Auth simple por bearer ======
+/* ---------- Auth simple ---------- */
 const AGENT_TOKEN = process.env.AGENT_TOKEN || '';
 function validateToken(token) {
   if (!AGENT_TOKEN) return true;
@@ -106,7 +107,7 @@ function auth(req, res, next) {
   next();
 }
 
-// ====== SSE ======
+/* ---------- SSE ---------- */
 const sseClients = new Set();
 function sseBroadcast(event, data) {
   const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
@@ -124,7 +125,7 @@ app.get('/wa/agent/stream', (req, res) => {
   req.on('close', () => { clearInterval(ping); sseClients.delete(res); });
 });
 
-// ====== Estado en memoria ======
+/* ---------- Estado/UI ---------- */
 const STATE = new Map();
 
 app.post('/wa/agent/import-whatsapp', auth, async (req, res) => {
@@ -148,12 +149,8 @@ app.get('/wa/agent/convos', auth, async (_req, res) => {
     const byId = new Map();
     for (const it of items) {
       byId.set(it.id, {
-        id: it.id,
-        name: it.name || it.id,
-        last: it.last || '',
-        lastTs: it.lastTs || 0,
-        human: false,
-        unread: 0,
+        id: it.id, name: it.name || it.id, last: it.last || '', lastTs: it.lastTs || 0,
+        human: false, unread: 0
       });
     }
     for (const [id, st] of STATE.entries()) {
@@ -228,7 +225,7 @@ app.post('/wa/agent/handoff', auth, (req, res) => {
   res.json({ ok:true });
 });
 
-// Subida “falsa” para registrar media en Sheets
+/* ---------- Media “falsa” ---------- */
 const upload = multer({ storage: multer.memoryStorage() });
 app.post('/wa/agent/send-media', auth, upload.array('files'), async (req, res) => {
   const { to, caption = '' } = req.body || {};
@@ -272,26 +269,7 @@ app.post('/wa/agent/send-media', auth, upload.array('files'), async (req, res) =
   }
 });
 
-// ==== Estaciones (si lo usas) ====
-const CAMP_VERANO_MONTHS = (process.env.CAMPANA_VERANO_MONTHS || '10,11,12,1,2,3')
-  .split(',').map(n => +n.trim()).filter(Boolean);
-const CAMP_INVIERNO_MONTHS = (process.env.CAMPANA_INVIERNO_MONTHS || '4,5,6,7,8,9')
-  .split(',').map(n => +n.trim()).filter(Boolean);
-function monthInTZ(tz = TZ){
-  try{
-    const parts = new Intl.DateTimeFormat('en-GB', { timeZone: tz, month:'2-digit' })
-      .formatToParts(new Date());
-    return +parts.find(p => p.type === 'month').value;
-  }catch{
-    return (new Date()).getMonth() + 1;
-  }
-}
-function currentCampana(){
-  const m = monthInTZ(TZ);
-  return CAMP_VERANO_MONTHS.includes(m) ? 'Verano' : 'Invierno';
-}
-
-// ====== Opcional: Webhook directo WA -> TG ======
+/* ---------- (Opcional) Webhook WA->TG ---------- */
 let tg = {
   ready: false,
   notifyNewTextFromWA: async () => {},
@@ -319,35 +297,38 @@ app.post('/wa/webhook', async (req, res) => {
   }
 });
 
-// ====== Arranque ======
+/* ---------- ARRANQUE: bindea primero ---------- */
 const HOST = process.env.HOST || '0.0.0.0';
 const PORT = Number(process.env.PORT || 3000);
 
-(async () => {
-  // 1) Telegram (opcional, no bloquea HTTP)
+app.listen(PORT, HOST, () => {
+  console.log(`🚀 Web service escuchando en http://${HOST}:${PORT}`);
+  console.log('   • Health:           GET /healthz');
+  console.log('   • Inbox UI:         GET /inbox');
+  console.log('   • API WA Agent:     /wa/agent/*');
+});
+
+/* ---------- Telegram bridge: no bloqueante (después del listen) ---------- */
+setImmediate(async () => {
   try {
     const wantTG = !!process.env.TG_BOT_TOKEN && !!process.env.TG_ADMIN_CHAT_ID;
     if (wantTG) {
       const mod = await import('./telegram-bridge.js');
-      await mod.startTelegramBridge();             // inicializa bot
-      tg = {
-        ready: true,
-        notifyNewTextFromWA: mod.notifyNewTextFromWA,
-        notifyNewMediaFromWA: mod.notifyNewMediaFromWA
-      };
-      console.log('[TG] Bridge activo');
+      // NO await largo: inicia y seguimos
+      mod.startTelegramBridge().then(() => {
+        tg = {
+          ready: true,
+          notifyNewTextFromWA: mod.notifyNewTextFromWA,
+          notifyNewMediaFromWA: mod.notifyNewMediaFromWA
+        };
+        console.log('[TG] Bridge activo');
+      }).catch(err => {
+        console.error('[TG] Error al iniciar (continuo sin TG):', err?.message || err);
+      });
     } else {
       console.log('[TG] Bridge omitido: faltan TG_BOT_TOKEN o TG_ADMIN_CHAT_ID');
     }
   } catch (err) {
-    console.error('[TG] Error al iniciar (continúo sin TG):', err?.message || err);
+    console.error('[TG] init error:', err?.message || err);
   }
-
-  // 2) HTTP (bind explícito para Render)
-  app.listen(PORT, HOST, () => {
-    console.log(`🚀 Web service escuchando en http://${HOST}:${PORT}`);
-    console.log('   • Health check:     GET /healthz');
-    console.log('   • Inbox UI:         GET /inbox');
-    console.log('   • API WA Agent:     /wa/agent/*');
-  });
-})();
+});

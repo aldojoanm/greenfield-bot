@@ -3,22 +3,16 @@ import { Telegraf, Markup } from 'telegraf';
 
 const {
   TG_BOT_TOKEN,
-  TG_ADMIN_CHAT_ID,     // debe ser NUMÉRICO, p.ej. -1001234567890
+  TG_ADMIN_CHAT_ID,     // debe ser NUMÉRICO, ej -1001234567890
   TG_USE_TOPICS = '1',
   PUBLIC_URL = '',
   AGENT_TOKEN = ''
 } = process.env;
 
-let bot = null;                       // iniciará en startTelegramBridge()
-const convMeta = new Map();           // convId -> { name, phone, topicId? }
-const tgMsgToConv = new Map();        // adminMsgId -> convId
-const queues = new Map();             // convId -> promise chain
-
-function keyForHeaders() {
-  const h = {};
-  if (AGENT_TOKEN) h['Authorization'] = `Bearer ${AGENT_TOKEN}`;
-  return { headers: h };
-}
+let bot = null;
+const convMeta = new Map();  // convId -> { name, phone, topicId? }
+const tgMsgToConv = new Map();
+const queues = new Map();
 
 async function waSendText(convId, text) {
   const url = `${PUBLIC_URL}/wa/agent/send`;
@@ -29,7 +23,6 @@ async function waSendText(convId, text) {
   });
   if (!res.ok) throw new Error(`waSendText ${res.status}`);
 }
-
 async function waSendMedia(convId, fileUrl, fileName = '', caption = '') {
   const url = `${PUBLIC_URL}/wa/agent/send-media`;
   const res = await fetch(url, {
@@ -39,7 +32,6 @@ async function waSendMedia(convId, fileUrl, fileName = '', caption = '') {
   });
   if (!res.ok) throw new Error(`waSendMedia ${res.status}`);
 }
-
 async function waSetMode(convId, mode) {
   const url = `${PUBLIC_URL}/wa/agent/handoff`;
   const res = await fetch(url, {
@@ -49,7 +41,6 @@ async function waSetMode(convId, mode) {
   });
   if (!res.ok) throw new Error(`waSetMode ${res.status}`);
 }
-
 async function waMarkRead(convId) {
   const url = `${PUBLIC_URL}/wa/agent/read`;
   const res = await fetch(url, {
@@ -82,7 +73,6 @@ function enqueue(convId, task) {
   return next;
 }
 
-// ===== Topics (opcional) =====
 async function getOrCreateTopicId(convId, titleFallback = '') {
   if (!bot || TG_USE_TOPICS !== '1') return undefined;
   const meta = convMeta.get(convId);
@@ -111,7 +101,6 @@ async function tgSendMessageForConv(convId, text, extra = {}) {
   tgMsgToConv.set(sent.message_id, convId);
   return sent;
 }
-
 async function tgSendMediaForConv(convId, kind, file, extra = {}) {
   if (!bot) return;
   const meta = convMeta.get(convId) || {};
@@ -125,9 +114,9 @@ async function tgSendMediaForConv(convId, kind, file, extra = {}) {
   return sent;
 }
 
-// ===== Export: WA -> TG =====
+/* ===== Export: WA -> TG ===== */
 export async function notifyNewTextFromWA({ id, name, phone, text }) {
-  if (!bot) return; // no-op si TG no está activo
+  if (!bot) return;
   convMeta.set(id, { ...(convMeta.get(id) || {}), name, phone });
   const header = `*${name || 'Contacto'}* · \`${phone || id}\``;
   const body = text?.trim() || '(sin texto)';
@@ -136,7 +125,7 @@ export async function notifyNewTextFromWA({ id, name, phone, text }) {
   });
 }
 export async function notifyNewMediaFromWA({ id, name, phone, caption = '(archivo)', mediaUrl, mime = '', filename = '' }) {
-  if (!bot) return; // no-op
+  if (!bot) return;
   convMeta.set(id, { ...(convMeta.get(id) || {}), name, phone });
   const header = `*${name || 'Contacto'}* · \`${phone || id}\``;
   return enqueue(id, async () => {
@@ -150,7 +139,7 @@ export async function notifyNewMediaFromWA({ id, name, phone, caption = '(archiv
   });
 }
 
-// ===== TG -> WA =====
+/* ===== TG -> WA ===== */
 function resolveConvIdFromContext(ctx) {
   const replyTo = ctx.message?.reply_to_message;
   if (replyTo?.message_id && tgMsgToConv.has(replyTo.message_id)) {
@@ -168,14 +157,10 @@ function resolveConvIdFromContext(ctx) {
   return null;
 }
 
-function ensureBot() {
-  if (!bot) throw new Error('Telegram bot no inicializado');
-}
-
 export async function startTelegramBridge() {
   if (!TG_BOT_TOKEN || !TG_ADMIN_CHAT_ID || isNaN(Number(TG_ADMIN_CHAT_ID))) {
     console.warn('[TG] Sin credenciales válidas (TG_BOT_TOKEN/TG_ADMIN_CHAT_ID). Bridge desactivado.');
-    return; // no throw: que no tumbe el server
+    return;
   }
   bot = new Telegraf(TG_BOT_TOKEN);
 
@@ -184,18 +169,10 @@ export async function startTelegramBridge() {
       const data = ctx.callbackQuery?.data || '';
       const [cmd, convId] = data.split(':');
       if (!convId) return ctx.answerCbQuery('Falta id');
-      if (cmd === 'pause') {
-        await waSetMode(convId, 'human');
-        await ctx.answerCbQuery('Bot pausado');
-      } else if (cmd === 'resume') {
-        await waSetMode(convId, 'bot');
-        await ctx.answerCbQuery('Bot ON');
-      } else if (cmd === 'read') {
-        await waMarkRead(convId);
-        await ctx.answerCbQuery('Marcado leído');
-      } else {
-        await ctx.answerCbQuery('Acción no válida');
-      }
+      if (cmd === 'pause')       { await waSetMode(convId, 'human'); await ctx.answerCbQuery('Bot pausado'); }
+      else if (cmd === 'resume') { await waSetMode(convId, 'bot');   await ctx.answerCbQuery('Bot ON'); }
+      else if (cmd === 'read')   { await waMarkRead(convId);         await ctx.answerCbQuery('Marcado leído'); }
+      else { await ctx.answerCbQuery('Acción no válida'); }
     } catch (e) {
       console.error('callback error', e);
       try { await ctx.answerCbQuery('Error'); } catch {}
