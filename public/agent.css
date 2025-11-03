@@ -68,57 +68,53 @@ body{background:var(--bg);color:var(--ink);font:14px/1.4 system-ui,-apple-system
 *::-webkit-scrollbar{width:10px;height:10px}
 *::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:999px}
 
+/* ======= SOLO DESKTOP ======= */
 @media (min-width:1024px){
-  /* Layout de dos columnas: lista (380px) + chat (1fr) */
-  .app{display:grid;grid-template-columns:380px 1fr;height:100dvh;overflow:hidden}
-
-  .view-list{display:block;height:calc(100dvh - var(--topbar-h));overflow:hidden}
-  .view-chat{
-    position:relative;            /* referencia para absolutos internos */
-    border-left:1px solid rgba(255,255,255,.10);
+  /* Layout 2 columnas: lista izquierda fija + chat derecha a pantalla completa */
+  .app{
+    display:grid;
+    grid-template-columns:380px 1fr;
     height:100dvh;
     overflow:hidden;
   }
 
-  /* Barra superior fija dentro del panel derecho, tipo WA Web */
-  .view-chat .chatbar{
-    position:sticky;
-    top:0;
-    z-index:3;
+  .view-list{
+    display:block;
+    height:calc(100dvh - var(--topbar-h));
+    overflow:hidden;
   }
 
-  /* Fila de acciones bajo la barra */
-  .sheet-row{
-    position:sticky;
-    top:var(--chatbar-h);
-    background:transparent;
-    z-index:2;
+  /* ⚙️ Panel derecho como GRID: header / acciones / mensajes / composer */
+  .view-chat{
+    border-left:1px solid rgba(255,255,255,.10);
+    height:100dvh;
+    display:grid;
+    grid-template-rows: var(--chatbar-h) 48px 1fr auto; /* <- composer al fondo */
+    overflow:hidden;
   }
 
-  /* Área de mensajes ocupa entre top y el composer */
+  /* Ya no sticky/fixed: el grid los posiciona */
+  .view-chat .chatbar{position:relative}
+  .sheet-row{position:relative;background:transparent}
+
+  /* El área de mensajes ocupa todo el espacio libre */
   .view-chat .msgs{
-    position:absolute;
-    top:calc(var(--chatbar-h) + 48px);   /* chatbar + sheet-row aprox */
-    left:0;
-    right:0;
-    bottom:calc(var(--composer-min-h) + 12px);
-    overflow:auto;
+    position:relative;
     padding:.75rem;
+    overflow:auto;
   }
 
-  /* ⬇️ Composer ANCLADO AL FONDO DEL PANEL DERECHO */
+  /* Composer en la última fila, pegado abajo y 100% de ancho */
   .view-chat .composer{
-    position:absolute;   /* anclado al contenedor .view-chat, no al viewport */
-    left:0;
-    right:0;
-    bottom:0;            /* pegado al borde inferior */
+    position:relative;  /* nada de absolute/fixed */
+    min-height:var(--composer-min-h);
     margin:0;
-    z-index:2;
   }
 
   .bubble{max-width:min(60ch,52%)}
 }
 
+/* ======= MÓVIL SIN CAMBIOS ======= */
 @media (max-width:1023px){
   .only-mobile{display:inline} .only-desktop{display:none}
   .view{display:none} .view.active{display:block}
