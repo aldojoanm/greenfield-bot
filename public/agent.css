@@ -191,6 +191,7 @@ body {
   background: transparent;
   min-height: 200px;
   flex: 1 1 auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .bubble {
@@ -247,14 +248,19 @@ body {
     overflow: hidden;
   }
 
+  .view-chat { display:flex; flex-direction:column; }
   .view-chat .chatbar { position: sticky; top: 0; }
   .sheet-row { display: flex; }
-  #moreBtn { display: none; }
+  #moreBtn { display: none !important; }
   .view-chat .msgs { overflow: auto; }
-  .view-chat .composer { margin-top: auto; }
+  /* IMPORTANTE: en PC el composer va al fondo */
+  .view-chat .composer { position: static; margin-top: auto; }
 
   /* Divisor entre lista y chat */
   .view-chat { border-left: 1px solid rgba(255,255,255,.10); }
+
+  /* Burbujas más cortas en escritorio (opcional) */
+  .bubble { max-width: min(50ch, 60%); }
 }
 
 /* =========================
@@ -264,18 +270,19 @@ body {
   .only-mobile { display: inline; }
   .only-desktop { display: none; }
 
+  /* Evitar que el body suba/baje: el scroll vive en .msgs */
+  html, body { height: 100%; overflow: hidden; }
+  .app { min-height: 100svh; }
   .view { display: none; }
   .view.active { display: block; }
 
-  /* Topbar de la LISTA en móvil (no fija) */
+  /* Topbar de la LISTA en móvil (no fija) y con safe-area cuando PWA */
   .topbar { position: static; width: 100%; }
-
-  /* iOS PWA: evita superponer la hora cuando se instala al Home */
-  .standalone .topbar { padding-top: calc(.3rem + var(--safe-top)); }
-
+  .standalone .topbar { padding-top: calc(.75rem + var(--safe-top)); } /* baja más INBOX/Conectado */
   .safe-top { padding-top: 0; }
 
   /* Chat header con safe-area */
+  .view-chat { height: 100svh; display: flex; flex-direction: column; }
   .view-chat .chatbar {
     position: sticky;
     top: 0;
@@ -283,7 +290,7 @@ body {
     z-index: 4;
   }
 
-  /* Composer fijo abajo */
+  /* Composer fijo abajo, sin “bailes” al hacer scroll */
   .view-chat .composer {
     position: fixed;
     left: 0; right: 0; bottom: 0;
@@ -291,10 +298,12 @@ body {
     padding-bottom: calc(.5rem + var(--safe-bottom));
   }
 
-  /* Mensajes: espacio para composer fijo */
+  /* Mensajes: dejan espacio al composer y scrollean ahí */
   .view-chat .msgs {
-    padding-bottom: calc(var(--composer-min-h) + var(--safe-bottom) + 16px);
+    flex: 1 1 auto;
     max-height: none;
+    padding-bottom: calc(var(--composer-min-h) + var(--safe-bottom) + 16px);
+    -webkit-overflow-scrolling: touch;
   }
 
   /* Sheet modal por encima del composer */
@@ -314,6 +323,13 @@ body {
     border-radius: 8px; margin: 0 0 .5rem 0;
   }
   .sheet .sheet-item + .sheet-item { margin-left: 0; }
+
+  /* iOS: NO ZOOM al enfocar */
+  input, textarea, select, button { font-size: 16px; }
+
+  /* “＋”, clip y enviar del MISMO tamaño; caja a 42px */
+  #moreBtn, #attachBtn, #send { width: 42px; height: 42px; min-width: 42px; }
+  #box { min-height: 42px; }
 }
 
 /* =========================
