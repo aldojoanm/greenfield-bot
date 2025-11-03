@@ -1,20 +1,30 @@
+// server.js
 import 'dotenv/config';
 import express from 'express';
 import path from 'path';
 import multer from 'multer';
 import { fileURLToPath } from 'url';
 
+// Routers existentes (los tuyos)
 import messengerRouter from './index.js';
 import pricesRouter from './prices.js';
 import waRouter from './wa.js';
 import vendorsRouter from './wa.vendedores.js';
 
+// Hojas / Sheets helpers (los tuyos)
 import {
   summariesLastNDays,
   historyForIdLastNDays,
   appendMessage,
   readPrices
 } from './sheets.js';
+
+// 🔗 Bridge Telegram (nuevo)
+import {
+  startTelegramBridge,
+  notifyNewTextFromWA,
+  notifyNewMediaFromWA
+} from './telegram-bridge.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -25,24 +35,29 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
 const TZ = process.env.TIMEZONE || 'America/La_Paz';
 
+// Static
 app.use('/image', express.static(path.join(__dirname, 'image')));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Inbox UI
 app.get('/inbox', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'agent.html'));
 });
 
+// Básicas
 app.get('/', (_req, res) => res.send('OK'));
 app.get('/healthz', (_req, res) => res.json({ ok: true }));
 app.get('/privacidad', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'privacidad.html'));
 });
 
+// Routers existentes
 app.use(vendorsRouter);
 app.use(messengerRouter);
 app.use(waRouter);
 app.use(pricesRouter);
 
+// ====== API catálogo desde Hoja PRECIOS ======
 app.get('/api/catalog', async (_req, res) => {
   try {
     const { prices = [], rate = 6.96 } = await readPrices();
@@ -85,6 +100,7 @@ app.get('/api/catalog', async (_req, res) => {
   }
 });
 
+// ====== Auth simple por bearer (para /wa/agent/* y bridge) ======
 const AGENT_TOKEN = process.env.AGENT_TOKEN || '';
 function validateToken(token) {
   if (!AGENT_TOKEN) return true;
@@ -97,6 +113,7 @@ function auth(req, res, next) {
   next();
 }
 
+// ====== SSE para Inbox ======
 const sseClients = new Set();
 function sseBroadcast(event, data) {
   const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
@@ -114,6 +131,7 @@ app.get('/wa/agent/stream', (req, res) => {
   req.on('close', () => { clearInterval(ping); sseClients.delete(res); });
 });
 
+// ====== Estado en memoria (para UI y bridge) ======
 const STATE = new Map();
 
 app.post('/wa/agent/import-whatsapp', auth, async (req, res) => {
@@ -217,7 +235,7 @@ app.post('/wa/agent/handoff', auth, (req, res) => {
   res.json({ ok:true });
 });
 
-// Subida “falsa” para registrar media en Sheets (igual que tu versión)
+// Subida “falsa” para registrar media en Sheets
 const upload = multer({ storage: multer.memoryStorage() });
 app.post('/wa/agent/send-media', auth, upload.array('files'), async (req, res) => {
   const { to, caption = '' } = req.body || {};
@@ -226,32 +244,42 @@ app.post('/wa/agent/send-media', auth, upload.array('files'), async (req, res) =
   const id = String(to);
   const baseTs = Date.now();
   const files = Array.isArray(req.files) ? req.files : [];
-  if (!files.length) return res.status(400).json({ error: 'files vacío' });
+  if (!files.length && !req.body.url) {
+    return res.status(400).json({ error: 'files vacío (o usa body.url)' });
+  }
 
   try {
-    let idx = 0;
-    for (const f of files) {
-      const sizeKB = Math.round((Number(f.size || 0) / 1024) * 10) / 10;
-      const line = `📎 Archivo: ${f.originalname} (${sizeKB} KB)`;
-      const ts = baseTs + (idx++);
-      await appendMessage({ waId:id, name:STATE.get(id)?.name || id, ts, role:'agent', content:line });
-      sseBroadcast('msg', { id, role:'agent', content:line, ts });
+    if (files.length) {
+      let idx = 0;
+      for (const f of files) {
+        const sizeKB = Math.round((Number(f.size || 0) / 1024) * 10) / 10;
+        const line = `📎 Archivo: ${f.originalname} (${sizeKB} KB)`;
+        const ts = baseTs + (idx++);
+        await appendMessage({ waId:id, name:STATE.get(id)?.name || id, ts, role:'agent', content:line });
+        sseBroadcast('msg', { id, role:'agent', content:line, ts });
+      }
+    } else if (req.body.url) {
+      // Soporte simple por URL (desde TG)
+      const line = `📎 Archivo: ${req.body.filename || 'archivo'}\n${req.body.url}`;
+      await appendMessage({ waId:id, name:STATE.get(id)?.name || id, ts:baseTs, role:'agent', content:line });
+      sseBroadcast('msg', { id, role:'agent', content:line, ts:baseTs });
     }
+
     if (caption && caption.trim()) {
-      const ts = baseTs + files.length;
+      const ts = baseTs + (files.length || 1);
       await appendMessage({ waId:id, name:STATE.get(id)?.name || id, ts, role:'agent', content:String(caption) });
       sseBroadcast('msg', { id, role:'agent', content:String(caption), ts });
       const st = STATE.get(id) || { human:false, unread:0 };
       STATE.set(id, { ...st, last:String(caption), unread:0 });
     }
-    res.json({ ok:true, sent: files.length });
+    res.json({ ok:true, sent: files.length || 1 });
   } catch (e) {
     console.error('[send-media]', e);
     res.status(500).json({ error: 'no se pudo guardar en Hoja 4' });
   }
 });
 
-// ==== Campaña automática por mes (si lo usas en otras partes) ====
+// ==== Campaña por estación (si lo usas) ====
 const CAMP_VERANO_MONTHS = (process.env.CAMPANA_VERANO_MONTHS || '10,11,12,1,2,3')
   .split(',').map(n => +n.trim()).filter(Boolean);
 const CAMP_INVIERNO_MONTHS = (process.env.CAMPANA_INVIERNO_MONTHS || '4,5,6,7,8,9')
@@ -270,15 +298,48 @@ function currentCampana(){
   return CAMP_VERANO_MONTHS.includes(m) ? 'Verano' : 'Invierno';
 }
 
-// ========= Arranque =========
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server escuchando en :${PORT}`);
-  console.log('   • Messenger:        GET/POST /webhook');
-  console.log('   • WhatsApp:         GET/POST /wa/webhook (con front de vendedores)');
-  console.log('   • Inbox UI:         GET       /inbox');
-  console.log('   • Inbox API:        /wa/agent/* (convos, history, send, read, handoff, send-media, import-whatsapp, stream)');
-  console.log('   • Prices JSON:      GET       /api/prices (pricesRouter)');
-  console.log('   • Catalog JSON:     GET       /api/catalog (desde Hoja PRECIOS)');
-  console.log('   • Health:           GET       /healthz');
+// ===== (OPCIONAL) Webhook directo de WA -> TG (si no lo manejas ya en waRouter) =====
+app.post('/wa/webhook', async (req, res) => {
+  try {
+    const ev = req.body || {};
+    // Adapta a tu formato real de webhook:
+    // ejemplo genérico:
+    if (ev.type === 'message_in') {
+      const { conversationId: id, name, phone, text, mediaUrl, mime, filename } = ev;
+      if (text && text.trim()) {
+        await notifyNewTextFromWA({ id, name, phone, text });
+      } else if (mediaUrl) {
+        await notifyNewMediaFromWA({ id, name, phone, caption: text || '(archivo)', mediaUrl, mime: mime || '', filename: filename || '' });
+      }
+      // mantén STATE para UI si quieres
+      const st = STATE.get(id) || { human:false, unread:0 };
+      STATE.set(id, { ...st, name: name || id, last: text || st.last || '', unread: (st.unread||0) + 1 });
+      // broadcast opcional
+      if (text) sseBroadcast('msg', { id, role:'user', content:String(text), ts: Date.now() });
+    }
+    res.sendStatus(200);
+  } catch (e) {
+    console.error('[wa/webhook]', e?.response?.data || e);
+    res.sendStatus(500);
+  }
 });
+
+// ====== Arranque ======
+const PORT = process.env.PORT || 3000;
+
+(async () => {
+  // 1) Arranca Telegram
+  await startTelegramBridge();
+
+  // 2) HTTP
+  app.listen(PORT, () => {
+    console.log(`🚀 Server escuchando en :${PORT}`);
+    console.log('   • Messenger:        GET/POST /webhook');
+    console.log('   • WhatsApp:         GET/POST /wa/webhook (o tu waRouter)');
+    console.log('   • Inbox UI:         GET       /inbox');
+    console.log('   • Inbox API:        /wa/agent/* (convos, history, send, read, handoff, send-media, import-whatsapp, stream)');
+    console.log('   • Prices JSON:      GET       /api/prices (pricesRouter)');
+    console.log('   • Catalog JSON:     GET       /api/catalog (Hoja PRECIOS)');
+    console.log('   • Health:           GET       /healthz');
+  });
+})();
