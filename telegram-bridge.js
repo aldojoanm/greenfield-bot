@@ -3,52 +3,42 @@ import { Telegraf, Markup } from 'telegraf';
 
 const {
   TG_BOT_TOKEN,
-  TG_ADMIN_CHAT_ID,     // debe ser NUMÉRICO, ej -1001234567890
+  TG_ADMIN_CHAT_ID,     // numérico: 1220063102 o -100xxxxxxxxxx
   TG_USE_TOPICS = '1',
   PUBLIC_URL = '',
   AGENT_TOKEN = ''
 } = process.env;
 
 let bot = null;
-const convMeta = new Map();  // convId -> { name, phone, topicId? }
+
+// Estado
+/** convId -> { name, phone, topicId? } */
+const convMeta = new Map();
+/** adminMsgId -> convId */
 const tgMsgToConv = new Map();
+/** convId -> Promise cola */
 const queues = new Map();
 
+// ───────────────── helpers HTTP hacia tu API ─────────────────
+async function waFetch(path, payload) {
+  const url = `${PUBLIC_URL}${path}`;
+  const headers = { 'Content-Type':'application/json' };
+  if (AGENT_TOKEN) headers.Authorization = `Bearer ${AGENT_TOKEN}`;
+  const res = await fetch(url, { method:'POST', headers, body: JSON.stringify(payload) });
+  if (!res.ok) throw new Error(`${path} ${res.status}`);
+}
+
 async function waSendText(convId, text) {
-  const url = `${PUBLIC_URL}/wa/agent/send`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type':'application/json', ...(AGENT_TOKEN?{Authorization:`Bearer ${AGENT_TOKEN}`}:{}) },
-    body: JSON.stringify({ to: convId, text })
-  });
-  if (!res.ok) throw new Error(`waSendText ${res.status}`);
+  return waFetch('/wa/agent/send', { to: convId, text });
 }
 async function waSendMedia(convId, fileUrl, fileName = '', caption = '') {
-  const url = `${PUBLIC_URL}/wa/agent/send-media`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type':'application/json', ...(AGENT_TOKEN?{Authorization:`Bearer ${AGENT_TOKEN}`}:{}) },
-    body: JSON.stringify({ to: convId, url: fileUrl, filename: fileName, caption })
-  });
-  if (!res.ok) throw new Error(`waSendMedia ${res.status}`);
+  return waFetch('/wa/agent/send-media', { to: convId, url: fileUrl, filename: fileName, caption });
 }
 async function waSetMode(convId, mode) {
-  const url = `${PUBLIC_URL}/wa/agent/handoff`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type':'application/json', ...(AGENT_TOKEN?{Authorization:`Bearer ${AGENT_TOKEN}`}:{}) },
-    body: JSON.stringify({ to: convId, mode })
-  });
-  if (!res.ok) throw new Error(`waSetMode ${res.status}`);
+  return waFetch('/wa/agent/handoff', { to: convId, mode });
 }
 async function waMarkRead(convId) {
-  const url = `${PUBLIC_URL}/wa/agent/read`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type':'application/json', ...(AGENT_TOKEN?{Authorization:`Bearer ${AGENT_TOKEN}`}:{}) },
-    body: JSON.stringify({ to: convId })
-  });
-  if (!res.ok) throw new Error(`waMarkRead ${res.status}`);
+  return waFetch('/wa/agent/read', { to: convId });
 }
 
 function actionKeyboard(convId) {
@@ -66,20 +56,21 @@ function ensureQueue(convId) {
 function enqueue(convId, task) {
   const prev = ensureQueue(convId);
   const next = prev.then(async () => {
-    try { if (bot) await bot.telegram.sendChatAction(TG_ADMIN_CHAT_ID, 'typing'); } catch {}
+    try { if (bot) await bot.telegram.sendChatAction(Number(TG_ADMIN_CHAT_ID), 'typing'); } catch {}
     return task();
   }).catch((e) => console.error('[queue]', e));
   queues.set(convId, next);
   return next;
 }
 
+// ───────────────── topics (opcional) ─────────────────
 async function getOrCreateTopicId(convId, titleFallback = '') {
   if (!bot || TG_USE_TOPICS !== '1') return undefined;
   const meta = convMeta.get(convId);
   if (meta?.topicId) return meta.topicId;
   try {
     const t = await bot.telegram.createForumTopic(
-      TG_ADMIN_CHAT_ID,
+      Number(TG_ADMIN_CHAT_ID),
       titleFallback?.slice(0,128) || `Chat ${convId}`
     );
     const topicId = t?.message_thread_id;
@@ -87,7 +78,9 @@ async function getOrCreateTopicId(convId, titleFallback = '') {
       convMeta.set(convId, { ...(meta || {}), topicId });
       return topicId;
     }
-  } catch {}
+  } catch (e) {
+    console.warn('[TG] No pude crear topic:', e?.description || e?.message || e);
+  }
   return undefined;
 }
 
@@ -97,10 +90,11 @@ async function tgSendMessageForConv(convId, text, extra = {}) {
   const topicId = await getOrCreateTopicId(convId, meta.name || meta.phone || convId);
   const opts = { parse_mode: 'Markdown', ...extra };
   if (topicId) opts.message_thread_id = topicId;
-  const sent = await bot.telegram.sendMessage(TG_ADMIN_CHAT_ID, text, opts);
+  const sent = await bot.telegram.sendMessage(Number(TG_ADMIN_CHAT_ID), text, opts);
   tgMsgToConv.set(sent.message_id, convId);
   return sent;
 }
+
 async function tgSendMediaForConv(convId, kind, file, extra = {}) {
   if (!bot) return;
   const meta = convMeta.get(convId) || {};
@@ -108,18 +102,18 @@ async function tgSendMediaForConv(convId, kind, file, extra = {}) {
   const opts = { ...extra };
   if (topicId) opts.message_thread_id = topicId;
   let sent;
-  if (kind === 'photo') sent = await bot.telegram.sendPhoto(TG_ADMIN_CHAT_ID, file, opts);
-  else sent = await bot.telegram.sendDocument(TG_ADMIN_CHAT_ID, file, opts);
+  if (kind === 'photo') sent = await bot.telegram.sendPhoto(Number(TG_ADMIN_CHAT_ID), file, opts);
+  else sent = await bot.telegram.sendDocument(Number(TG_ADMIN_CHAT_ID), file, opts);
   tgMsgToConv.set(sent.message_id, convId);
   return sent;
 }
 
-/* ===== Export: WA -> TG ===== */
+// ─────────────── Export: WA -> TG (avisos entrantes) ───────────────
 export async function notifyNewTextFromWA({ id, name, phone, text }) {
   if (!bot) return;
   convMeta.set(id, { ...(convMeta.get(id) || {}), name, phone });
   const header = `*${name || 'Contacto'}* · \`${phone || id}\``;
-  const body = text?.trim() || '(sin texto)';
+  const body = (text || '').trim() || '(sin texto)';
   return enqueue(id, async () => {
     await tgSendMessageForConv(id, `📩 _Nuevo mensaje_\n${header}\n\n${body}`, actionKeyboard(id));
   });
@@ -139,7 +133,7 @@ export async function notifyNewMediaFromWA({ id, name, phone, caption = '(archiv
   });
 }
 
-/* ===== TG -> WA ===== */
+// ─────────────── TG -> WA (responder) ───────────────
 function resolveConvIdFromContext(ctx) {
   const replyTo = ctx.message?.reply_to_message;
   if (replyTo?.message_id && tgMsgToConv.has(replyTo.message_id)) {
@@ -158,12 +152,42 @@ function resolveConvIdFromContext(ctx) {
 }
 
 export async function startTelegramBridge() {
-  if (!TG_BOT_TOKEN || !TG_ADMIN_CHAT_ID || isNaN(Number(TG_ADMIN_CHAT_ID))) {
-    console.warn('[TG] Sin credenciales válidas (TG_BOT_TOKEN/TG_ADMIN_CHAT_ID). Bridge desactivado.');
-    return;
+  // Validación
+  if (!TG_BOT_TOKEN) { console.warn('[TG] Falta TG_BOT_TOKEN'); return; }
+  if (!TG_ADMIN_CHAT_ID || isNaN(Number(TG_ADMIN_CHAT_ID))) {
+    console.warn('[TG] TG_ADMIN_CHAT_ID debe ser numérico'); return;
   }
+  if (!PUBLIC_URL) {
+    console.warn('[TG] PUBLIC_URL vacío (el bridge no podrá llamar a /wa/agent/*)');
+  }
+
   bot = new Telegraf(TG_BOT_TOKEN);
 
+  // Logs mínimos para debug
+  bot.use(async (ctx, next) => {
+    try {
+      // console.log('[TG] update', ctx.update?.update_id, ctx.update?.message?.text || ctx.update?.callback_query?.data);
+      await next();
+    } catch (e) {
+      console.error('[TG] middleware error', e);
+    }
+  });
+
+  bot.catch((err, ctx) => {
+    console.error('[TG] error', err?.message || err, 'ctx:', ctx?.updateType);
+  });
+
+  // Heartbeat para probar rápido
+  bot.start(async (ctx) => {
+    await ctx.reply('✅ Bot vivo.\n• /ping\n• /id (te devuelve el chat id)\n• Responde (reply) a un mensaje reenviado desde la bandeja para contestar al cliente.\n• /to <conversationId> <mensaje>');
+  });
+  bot.command('ping', async (ctx) => { await ctx.reply('pong'); });
+  bot.command('id', async (ctx) => {
+    const chat = ctx.chat || {};
+    await ctx.reply(`Chat ID: \`${chat.id}\``, { parse_mode: 'Markdown' });
+  });
+
+  // Acciones inline
   bot.on('callback_query', async (ctx) => {
     try {
       const data = ctx.callbackQuery?.data || '';
@@ -179,6 +203,7 @@ export async function startTelegramBridge() {
     }
   });
 
+  // Comando /to
   bot.command('to', async (ctx) => {
     const txt = ctx.message?.text || '';
     const m = txt.match(/^\/to\s+(\S+)\s+([\s\S]*)/);
@@ -189,15 +214,17 @@ export async function startTelegramBridge() {
     await ctx.reply('✅ Enviado');
   });
 
+  // Texto directo (requiere reply a un mensaje del bot o topic asociado)
   bot.on('text', async (ctx) => {
     const convId = resolveConvIdFromContext(ctx);
-    if (!convId) return;
+    if (!convId) return; // ignora textos que no se puedan resolver
     const msg = ctx.message?.text?.trim();
     if (!msg) return;
     await enqueue(convId, async () => { await waSendText(convId, msg); });
     try { await ctx.react?.('✅'); } catch {}
   });
 
+  // Foto / Documento
   bot.on('photo', async (ctx) => {
     const convId = resolveConvIdFromContext(ctx);
     if (!convId) return;
@@ -222,6 +249,13 @@ export async function startTelegramBridge() {
     try { await ctx.react?.('📎'); } catch {}
   });
 
+  // IMPORTANTÍSIMO: asegúrate de usar polling (borra webhook si alguna vez lo configuraste)
+  try {
+    await bot.telegram.deleteWebhook({ drop_pending_updates: false });
+  } catch (e) {
+    console.warn('[TG] deleteWebhook warning:', e?.description || e?.message || e);
+  }
+
   await bot.launch();
   console.log('[TG] Bridge activo y escuchando');
 }
@@ -229,3 +263,4 @@ export async function startTelegramBridge() {
 // Limpieza
 process.once('SIGINT',  () => { if (bot) bot.stop('SIGINT'); });
 process.once('SIGTERM', () => { if (bot) bot.stop('SIGTERM'); });
+

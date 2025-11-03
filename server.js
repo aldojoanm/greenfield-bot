@@ -29,21 +29,14 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
 const TZ = process.env.TIMEZONE || 'America/La_Paz';
 
-/* ---------- Errores globales (para no colgarnos silenciosamente) ---------- */
-process.on('unhandledRejection', (r) => {
-  console.error('[unhandledRejection]', r);
-});
-process.on('uncaughtException', (e) => {
-  console.error('[uncaughtException]', e);
-});
+/* ---------- Errores globales ---------- */
+process.on('unhandledRejection', (r) => console.error('[unhandledRejection]', r));
+process.on('uncaughtException',  (e) => console.error('[uncaughtException]', e));
 
 /* ---------- Static / UI ---------- */
 app.use('/image', express.static(path.join(__dirname, 'image')));
 app.use(express.static(path.join(__dirname, 'public')));
-
-app.get('/inbox', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'agent.html'));
-});
+app.get('/inbox', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'agent.html')));
 
 /* ---------- Health / raíz ---------- */
 app.get('/', (_req, res) => res.send('OK'));
@@ -75,10 +68,7 @@ app.get('/api/catalog', async (_req, res) => {
       const unidad = String(p.unidad || '').trim();
       const categoria = String(p.categoria || '').trim() || 'Herbicidas';
       const cur = byProduct.get(producto) || {
-        nombre: producto,
-        categoria,
-        imagen: `/image/${producto}.png`,
-        variantes: []
+        nombre: producto, categoria, imagen: `/image/${producto}.png`, variantes: []
       };
       cur.categoria = cur.categoria || categoria;
       if (presentacion || unidad || usd || bs) {
@@ -297,7 +287,7 @@ app.post('/wa/webhook', async (req, res) => {
   }
 });
 
-/* ---------- ARRANQUE: bindea primero ---------- */
+/* ---------- ARRANQUE ---------- */
 const HOST = process.env.HOST || '0.0.0.0';
 const PORT = Number(process.env.PORT || 3000);
 
@@ -308,13 +298,12 @@ app.listen(PORT, HOST, () => {
   console.log('   • API WA Agent:     /wa/agent/*');
 });
 
-/* ---------- Telegram bridge: no bloqueante (después del listen) ---------- */
+/* ---------- Telegram bridge: después del listen ---------- */
 setImmediate(async () => {
   try {
     const wantTG = !!process.env.TG_BOT_TOKEN && !!process.env.TG_ADMIN_CHAT_ID;
     if (wantTG) {
       const mod = await import('./telegram-bridge.js');
-      // NO await largo: inicia y seguimos
       mod.startTelegramBridge().then(() => {
         tg = {
           ready: true,
