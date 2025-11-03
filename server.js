@@ -5,26 +5,19 @@ import path from 'path';
 import multer from 'multer';
 import { fileURLToPath } from 'url';
 
-// Routers existentes (los tuyos)
+// Routers existentes
 import messengerRouter from './index.js';
 import pricesRouter from './prices.js';
 import waRouter from './wa.js';
 import vendorsRouter from './wa.vendedores.js';
 
-// Hojas / Sheets helpers (los tuyos)
+// Helpers de Sheets
 import {
   summariesLastNDays,
   historyForIdLastNDays,
   appendMessage,
   readPrices
 } from './sheets.js';
-
-// 🔗 Bridge Telegram (nuevo)
-import {
-  startTelegramBridge,
-  notifyNewTextFromWA,
-  notifyNewMediaFromWA
-} from './telegram-bridge.js';
 
 const app = express();
 app.disable('x-powered-by');
@@ -51,7 +44,7 @@ app.get('/privacidad', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'privacidad.html'));
 });
 
-// Routers existentes
+// Routers
 app.use(vendorsRouter);
 app.use(messengerRouter);
 app.use(waRouter);
@@ -100,7 +93,7 @@ app.get('/api/catalog', async (_req, res) => {
   }
 });
 
-// ====== Auth simple por bearer (para /wa/agent/* y bridge) ======
+// ====== Auth simple por bearer ======
 const AGENT_TOKEN = process.env.AGENT_TOKEN || '';
 function validateToken(token) {
   if (!AGENT_TOKEN) return true;
@@ -113,7 +106,7 @@ function auth(req, res, next) {
   next();
 }
 
-// ====== SSE para Inbox ======
+// ====== SSE ======
 const sseClients = new Set();
 function sseBroadcast(event, data) {
   const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
@@ -131,7 +124,7 @@ app.get('/wa/agent/stream', (req, res) => {
   req.on('close', () => { clearInterval(ping); sseClients.delete(res); });
 });
 
-// ====== Estado en memoria (para UI y bridge) ======
+// ====== Estado en memoria ======
 const STATE = new Map();
 
 app.post('/wa/agent/import-whatsapp', auth, async (req, res) => {
@@ -244,6 +237,7 @@ app.post('/wa/agent/send-media', auth, upload.array('files'), async (req, res) =
   const id = String(to);
   const baseTs = Date.now();
   const files = Array.isArray(req.files) ? req.files : [];
+
   if (!files.length && !req.body.url) {
     return res.status(400).json({ error: 'files vacío (o usa body.url)' });
   }
@@ -258,8 +252,7 @@ app.post('/wa/agent/send-media', auth, upload.array('files'), async (req, res) =
         await appendMessage({ waId:id, name:STATE.get(id)?.name || id, ts, role:'agent', content:line });
         sseBroadcast('msg', { id, role:'agent', content:line, ts });
       }
-    } else if (req.body.url) {
-      // Soporte simple por URL (desde TG)
+    } else {
       const line = `📎 Archivo: ${req.body.filename || 'archivo'}\n${req.body.url}`;
       await appendMessage({ waId:id, name:STATE.get(id)?.name || id, ts:baseTs, role:'agent', content:line });
       sseBroadcast('msg', { id, role:'agent', content:line, ts:baseTs });
@@ -279,7 +272,7 @@ app.post('/wa/agent/send-media', auth, upload.array('files'), async (req, res) =
   }
 });
 
-// ==== Campaña por estación (si lo usas) ====
+// ==== Estaciones (si lo usas) ====
 const CAMP_VERANO_MONTHS = (process.env.CAMPANA_VERANO_MONTHS || '10,11,12,1,2,3')
   .split(',').map(n => +n.trim()).filter(Boolean);
 const CAMP_INVIERNO_MONTHS = (process.env.CAMPANA_INVIERNO_MONTHS || '4,5,6,7,8,9')
@@ -298,23 +291,25 @@ function currentCampana(){
   return CAMP_VERANO_MONTHS.includes(m) ? 'Verano' : 'Invierno';
 }
 
-// ===== (OPCIONAL) Webhook directo de WA -> TG (si no lo manejas ya en waRouter) =====
+// ====== Opcional: Webhook directo WA -> TG ======
+let tg = {
+  ready: false,
+  notifyNewTextFromWA: async () => {},
+  notifyNewMediaFromWA: async () => {}
+};
+
 app.post('/wa/webhook', async (req, res) => {
   try {
     const ev = req.body || {};
-    // Adapta a tu formato real de webhook:
-    // ejemplo genérico:
     if (ev.type === 'message_in') {
       const { conversationId: id, name, phone, text, mediaUrl, mime, filename } = ev;
       if (text && text.trim()) {
-        await notifyNewTextFromWA({ id, name, phone, text });
+        await tg.notifyNewTextFromWA({ id, name, phone, text });
       } else if (mediaUrl) {
-        await notifyNewMediaFromWA({ id, name, phone, caption: text || '(archivo)', mediaUrl, mime: mime || '', filename: filename || '' });
+        await tg.notifyNewMediaFromWA({ id, name, phone, caption: text || '(archivo)', mediaUrl, mime: mime || '', filename: filename || '' });
       }
-      // mantén STATE para UI si quieres
       const st = STATE.get(id) || { human:false, unread:0 };
       STATE.set(id, { ...st, name: name || id, last: text || st.last || '', unread: (st.unread||0) + 1 });
-      // broadcast opcional
       if (text) sseBroadcast('msg', { id, role:'user', content:String(text), ts: Date.now() });
     }
     res.sendStatus(200);
@@ -329,21 +324,26 @@ const HOST = process.env.HOST || '0.0.0.0';
 const PORT = Number(process.env.PORT || 3000);
 
 (async () => {
-  // 1) Arranca Telegram (no debe impedir levantar HTTP)
+  // 1) Telegram (opcional, no bloquea HTTP)
   try {
     const wantTG = !!process.env.TG_BOT_TOKEN && !!process.env.TG_ADMIN_CHAT_ID;
     if (wantTG) {
-      const { startTelegramBridge } = await import('./telegram-bridge.js');
-      await startTelegramBridge();
+      const mod = await import('./telegram-bridge.js');
+      await mod.startTelegramBridge();             // inicializa bot
+      tg = {
+        ready: true,
+        notifyNewTextFromWA: mod.notifyNewTextFromWA,
+        notifyNewMediaFromWA: mod.notifyNewMediaFromWA
+      };
       console.log('[TG] Bridge activo');
     } else {
       console.log('[TG] Bridge omitido: faltan TG_BOT_TOKEN o TG_ADMIN_CHAT_ID');
     }
   } catch (err) {
-    console.error('[TG] Error al iniciar (continuo sin TG):', err?.message || err);
+    console.error('[TG] Error al iniciar (continúo sin TG):', err?.message || err);
   }
 
-  // 2) HTTP (bind explícito a 0.0.0.0)
+  // 2) HTTP (bind explícito para Render)
   app.listen(PORT, HOST, () => {
     console.log(`🚀 Web service escuchando en http://${HOST}:${PORT}`);
     console.log('   • Health check:     GET /healthz');
