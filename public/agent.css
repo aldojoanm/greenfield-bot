@@ -69,14 +69,53 @@ body{background:var(--bg);color:var(--ink);font:14px/1.4 system-ui,-apple-system
 *::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:999px}
 
 @media (min-width:1024px){
+  /* Layout de dos columnas: lista (380px) + chat (1fr) */
   .app{display:grid;grid-template-columns:380px 1fr;height:100dvh;overflow:hidden}
+
   .view-list{display:block;height:calc(100dvh - var(--topbar-h));overflow:hidden}
-  .view-chat{position:relative;border-left:1px solid rgba(255,255,255,.10);height:100dvh;overflow:hidden}
-  #moreBtn{display:none!important}
-  .view-chat .msgs{position:absolute;top:calc(var(--chatbar-h) + 48px);left:0;right:0;bottom:calc(var(--composer-min-h) + 12px);overflow:auto;padding:.75rem}
-  .view-chat .composer{position:fixed;left:380px;right:0;bottom:0;margin:0}
-  .view-chat .chatbar{position:fixed;left:380px;right:0;top:0}
-  .sheet-row{position:fixed;left:380px;right:0;top:var(--chatbar-h);background:transparent}
+  .view-chat{
+    position:relative;            /* referencia para absolutos internos */
+    border-left:1px solid rgba(255,255,255,.10);
+    height:100dvh;
+    overflow:hidden;
+  }
+
+  /* Barra superior fija dentro del panel derecho, tipo WA Web */
+  .view-chat .chatbar{
+    position:sticky;
+    top:0;
+    z-index:3;
+  }
+
+  /* Fila de acciones bajo la barra */
+  .sheet-row{
+    position:sticky;
+    top:var(--chatbar-h);
+    background:transparent;
+    z-index:2;
+  }
+
+  /* Área de mensajes ocupa entre top y el composer */
+  .view-chat .msgs{
+    position:absolute;
+    top:calc(var(--chatbar-h) + 48px);   /* chatbar + sheet-row aprox */
+    left:0;
+    right:0;
+    bottom:calc(var(--composer-min-h) + 12px);
+    overflow:auto;
+    padding:.75rem;
+  }
+
+  /* ⬇️ Composer ANCLADO AL FONDO DEL PANEL DERECHO */
+  .view-chat .composer{
+    position:absolute;   /* anclado al contenedor .view-chat, no al viewport */
+    left:0;
+    right:0;
+    bottom:0;            /* pegado al borde inferior */
+    margin:0;
+    z-index:2;
+  }
+
   .bubble{max-width:min(60ch,52%)}
 }
 
