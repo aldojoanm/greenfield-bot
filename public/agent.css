@@ -191,7 +191,6 @@ body {
   background: transparent;
   min-height: 200px;
   flex: 1 1 auto;
-  -webkit-overflow-scrolling: touch;
 }
 
 .bubble {
@@ -239,6 +238,7 @@ body {
     display: grid;
     grid-template-columns: 380px 1fr;
     grid-auto-rows: minmax(0, 1fr);
+    column-gap: 0;
   }
 
   .view {
@@ -249,15 +249,12 @@ body {
 
   .view-chat .chatbar { position: sticky; top: 0; }
   .sheet-row { display: flex; }
-  #moreBtn { display: none !important; } /* quitar “+” en PC */
+  #moreBtn { display: none; }
   .view-chat .msgs { overflow: auto; }
   .view-chat .composer { margin-top: auto; }
 
   /* Divisor entre lista y chat */
   .view-chat { border-left: 1px solid rgba(255,255,255,.10); }
-
-  /* Burbujas más cortas en escritorio */
-  .bubble { max-width: min(50ch, 60%); }
 }
 
 /* =========================
@@ -267,25 +264,18 @@ body {
   .only-mobile { display: inline; }
   .only-desktop { display: none; }
 
-  /* Evitar que el body se desplace/botee; el scroll vive en .msgs */
-  html, body { height: 100%; overflow: hidden; }
-  .app { min-height: 100svh; }
   .view { display: none; }
   .view.active { display: block; }
 
-  /* Topbar de la LISTA (no fija) */
+  /* Topbar de la LISTA en móvil (no fija) */
   .topbar { position: static; width: 100%; }
 
-  /* iOS PWA: evita superponer hora/isla dinámica en Home Screen */
+  /* iOS PWA: evita superponer la hora cuando se instala al Home */
   .standalone .topbar { padding-top: calc(.3rem + var(--safe-top)); }
 
   .safe-top { padding-top: 0; }
 
   /* Chat header con safe-area */
-  .view-chat {
-    height: 100svh;
-    display: flex; flex-direction: column;
-  }
   .view-chat .chatbar {
     position: sticky;
     top: 0;
@@ -293,20 +283,18 @@ body {
     z-index: 4;
   }
 
-  /* Composer fijo dentro del contenedor (no del body) */
+  /* Composer fijo abajo */
   .view-chat .composer {
-    position: sticky;
-    bottom: 0;
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
     z-index: 5;
     padding-bottom: calc(.5rem + var(--safe-bottom));
   }
 
-  /* Mensajes: espacio para composer fijo y scroll suave */
+  /* Mensajes: espacio para composer fijo */
   .view-chat .msgs {
-    flex: 1 1 auto;
-    max-height: none;
     padding-bottom: calc(var(--composer-min-h) + var(--safe-bottom) + 16px);
-    -webkit-overflow-scrolling: touch;
+    max-height: none;
   }
 
   /* Sheet modal por encima del composer */
@@ -326,9 +314,6 @@ body {
     border-radius: 8px; margin: 0 0 .5rem 0;
   }
   .sheet .sheet-item + .sheet-item { margin-left: 0; }
-
-  /* iOS: evitar zoom al enfocar inputs/textarea */
-  input, textarea, select, button { font-size: 16px; }
 }
 
 /* =========================

@@ -13,6 +13,7 @@ const ACCOUNTS_TEXT = [
 ].join('\n');
 
 // ====== DOM ======
+const app        = document.getElementById('app');
 const viewList   = document.getElementById('view-list');
 const viewChat   = document.getElementById('view-chat');
 const threadList = document.getElementById('threadList');
@@ -25,6 +26,7 @@ const chatMeta   = document.getElementById('chatMeta');
 const msgsEl     = document.getElementById('msgs');
 const moreBtn    = document.getElementById('moreBtn');
 const sheetModal = document.getElementById('sheet');     // MOBILE modal
+const sheetRow   = document.getElementById('sheetRow');  // DESKTOP row
 const fileInput  = document.getElementById('fileInput');
 const dropZone   = document.getElementById('dropZone');
 const box        = document.getElementById('box');
@@ -58,7 +60,7 @@ const timeAgo = (ts)=> {
   return `${Math.floor(diff/86400)}d`;
 };
 
-// ===== iOS PWA flag =====
+// ===== iOS PWA safe-area/class =====
 (function ensureDisplayModeClass(){
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
   if (isStandalone) document.documentElement.classList.add('standalone');
@@ -107,7 +109,7 @@ function setConn(status, title=''){
   elConn.textContent = (map[status]||'') + (title?` — ${title}`:'');
 }
 
-/* ===== SSE con reconexión y fallback ===== */
+/* ===== SSE con reconexión y fallback de sondeo ===== */
 function startPolling(){
   stopPolling();
   pollTimer = setInterval(()=> refresh(false), 20000);
@@ -126,7 +128,7 @@ function startSSE(){
   sse.addEventListener('open', ()=> setConn('ok'));
   sse.addEventListener('ping', ()=> setConn('ok'));
   sse.addEventListener('msg', (ev)=>{
-    const data = JSON.parse(ev.data||{});
+    const data = JSON.parse(ev.data||'{}');
     if(current && sameId(normId(data.id), current.id)){
       current.memory = (current.memory||[]).concat([{role:data.role, content:data.content, ts:data.ts}]);
       renderMsgs(current.memory);
@@ -135,6 +137,7 @@ function startSSE(){
   });
   sse.onerror = ()=>{
     setConn('off','reintentando');
+    // iOS puede cerrar SSE al suspender; usa fallback
     startPolling();
     try{ sse.close(); }catch{}
     setTimeout(startSSE, 4000);
@@ -144,7 +147,7 @@ function startSSE(){
 async function requestToken(force=false){
   if (!force && api.token && !api.isExpired()) return true;
   while (true){
-    const t = prompt('Token de agente (vigencia 24h en este dispositivo)');
+    const t = prompt('Token de agente (vigencia 24h en este dispositivo)'); 
     if (!t) { alert('Se requiere token para continuar.'); return false; }
     api.persist(t.trim());
     try{
@@ -162,13 +165,13 @@ async function forceReauth(){
   const ok = await requestToken(true); if (ok) await refresh(true);
 }
 
-// Reconexión al volver a primer plano (iOS PWA)
+// Reconecta cuando la app vuelve a primer plano (iOS PWA)
 document.addEventListener('visibilitychange', ()=>{
   if (document.visibilityState === 'visible'){ setConn('wait','reconectando'); startSSE(); refresh(false); }
 });
 window.addEventListener('pageshow', (e)=>{ if (e.persisted){ startSSE(); refresh(false); }});
 
-// ====== LISTA ======
+// ====== LISTA estilo Messenger ======
 const lastFromMemory = (m=[]) => m.length ? m[m.length-1] : null;
 const statusDot = (c)=> c.unread ? 'unread' : (c.done||c.finalizado) ? 'done' : c.human ? 'agent' : 'done';
 const initial = (name='?') => name.trim()[0]?.toUpperCase?.() || '?';
@@ -251,7 +254,7 @@ async function openChat(id){
 }
 backBtn.onclick = ()=>{ current=null; viewChat.classList.remove('active'); viewList.classList.add('active'); };
 
-// ====== Acciones (comparten lógica) ======
+// ====== Acciones (comparten lógica Desktop/Mobile) ======
 async function doRequestInfo(){
   if (!current) return;
   const nombre = current.name?.trim() || 'cliente';
@@ -286,23 +289,23 @@ async function doTakeHuman(){ if(!current) return; await api.handoff(current.id,
 async function doResumeBot(){ if(!current) return; await api.handoff(current.id,'bot'); statusPill.style.display='none'; closeSheet(); }
 
 // Desktop row
-document.getElementById('requestInfo') .onclick = doRequestInfo;
-document.getElementById('sendQR')      .onclick = doSendQR;
-document.getElementById('sendAccounts') .onclick = doSendAccounts;
-document.getElementById('markRead')     .onclick = doMarkRead;
-document.getElementById('takeHuman')    .onclick = doTakeHuman;
-document.getElementById('resumeBot')    .onclick = doResumeBot;
+document.getElementById('requestInfo').onclick = doRequestInfo;
+document.getElementById('sendQR').onclick = doSendQR;
+document.getElementById('sendAccounts').onclick = doSendAccounts;
+document.getElementById('markRead').onclick  = doMarkRead;
+document.getElementById('takeHuman').onclick = doTakeHuman;
+document.getElementById('resumeBot').onclick = doResumeBot;
 
 // Mobile sheet
 document.getElementById('requestInfo_m').onclick = doRequestInfo;
-document.getElementById('sendQR_m')     .onclick = doSendQR;
+document.getElementById('sendQR_m').onclick = doSendQR;
 document.getElementById('sendAccounts_m').onclick = doSendAccounts;
-document.getElementById('markRead_m')   .onclick = doMarkRead;
-document.getElementById('takeHuman_m')  .onclick = doTakeHuman;
-document.getElementById('resumeBot_m')  .onclick = doResumeBot;
+document.getElementById('markRead_m').onclick  = doMarkRead;
+document.getElementById('takeHuman_m').onclick = doTakeHuman;
+document.getElementById('resumeBot_m').onclick = doResumeBot;
 
 const closeSheet = ()=> sheetModal.classList.remove('show');
-moreBtn.onclick  = ()=> sheetModal.classList.toggle('show');
+moreBtn.onclick = ()=> sheetModal.classList.toggle('show');
 document.getElementById('closeSheet').onclick = closeSheet;
 
 // ====== Envío / inputs ======
@@ -327,7 +330,7 @@ fileInput.onchange = async (e)=>{
 ['dragleave','drop'].forEach(ev=> dropZone.addEventListener(ev, e=>{ e.preventDefault(); e.stopPropagation(); dropZone.classList.remove('drag'); }));
 dropZone.addEventListener('drop', async (e)=>{ const files = Array.from(e.dataTransfer?.files||[]); if (!files.length || !current) return; try{ await api.sendMedia(current.id, files, ''); } catch{ alert('Error subiendo archivo(s).'); } });
 
-// ====== Filtros ======
+// ====== Filtros lista ======
 function renderList(){ renderThreads(); }
 searchEl.oninput = renderList;
 segBtns.forEach(b=> b.onclick = ()=>{ segBtns.forEach(x=>x.classList.remove('active')); b.classList.add('active'); filter = b.dataset.filter; renderList(); });
@@ -344,7 +347,7 @@ async function refresh(openFirst=false){
   }catch{}
 }
 
-// ====== Desktop: rotular botón ======
+// ====== Personalización Desktop: botón "Subir archivo" ======
 function adjustDesktopControls(){
   if (isDesktop()){
     attachBtn.textContent = 'Subir archivo';
@@ -366,7 +369,7 @@ window.addEventListener('resize', adjustDesktopControls);
   startSSE();
 })();
 
-// PWA
+// PWA (rutas relativas)
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(()=>{});
