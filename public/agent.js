@@ -126,7 +126,7 @@ function startSSE(){
   sse.addEventListener('open', ()=> setConn('ok'));
   sse.addEventListener('ping', ()=> setConn('ok'));
   sse.addEventListener('msg', (ev)=>{
-    const data = JSON.parse(ev.data||'{}');
+    const data = JSON.parse(ev.data||{});
     if(current && sameId(normId(data.id), current.id)){
       current.memory = (current.memory||[]).concat([{role:data.role, content:data.content, ts:data.ts}]);
       renderMsgs(current.memory);
