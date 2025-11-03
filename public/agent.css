@@ -257,24 +257,37 @@ body {
     column-gap: 0;
   }
 
+  /* La vista ocupa el alto disponible bajo la topbar */
   .view {
     display: block;
     height: calc(100dvh - var(--topbar-h));
     overflow: hidden;
   }
 
+  /* Chat en columna: msgs crece, composer se pega abajo */
+  .view-chat {
+    display: flex;
+    flex-direction: column;
+  }
+
   .view-chat .chatbar { position: sticky; top: 0; }
+
   .sheet-row { display: flex; }
 
-  /* Oculta completamente el + en desktop */
+  /* Oculta el + en desktop */
   #moreBtn { display: none !important; }
 
-  .view-chat .msgs { overflow: auto; }
-  /* Pega el composer al borde inferior SIEMPRE */
+  /* La lista de mensajes scrollea y ocupa todo el espacio */
+  .view-chat .msgs {
+    flex: 1 1 auto;
+    overflow: auto;
+  }
+
+  /* Composer pegado al borde inferior (sin sticky) */
   .view-chat .composer {
-    position: sticky;
-    bottom: 0;
-    margin-top: 0;
+    position: static;   /* <- quita sticky */
+    bottom: auto;
+    margin-top: auto;   /* <- lo empuja al fondo */
   }
 
   /* Divisor entre lista y chat */
