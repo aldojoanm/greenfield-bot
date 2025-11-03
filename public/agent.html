@@ -2,17 +2,11 @@
 <html lang="es">
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1"/>
   <title>Inbox — Greenfield</title>
-
   <link rel="stylesheet" href="./agent.css">
-
-  <!-- Marca -->
   <meta name="brand:name" content="Greenfield Agroquímicos">
   <meta name="brand:qr" content="./qr-pagos.png">
-
-  <!-- PWA -->
   <link rel="manifest" href="./manifest.webmanifest">
   <meta name="theme-color" content="#00a884">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -21,13 +15,11 @@
 </head>
 <body>
   <div id="app" class="app">
-    <!-- LISTA -->
     <section id="view-list" class="view view-list active safe-top">
       <header class="topbar">
         <h1>Inbox</h1>
         <span id="conn" class="pill" aria-live="polite">Conectando…</span>
       </header>
-
       <div class="filters">
         <div class="filters-row">
           <span id="msgCount" class="count">Mensajes (0)</span>
@@ -38,20 +30,17 @@
             <button class="seg" data-filter="agent">Asesor</button>
           </div>
         </div>
-
         <div class="searchbar">
           <input id="search" placeholder="Buscar…">
           <button class="btn" id="importWA" title="Importar WhatsApp (Sheets)">📥</button>
-          <button class="btn" id="refresh"  title="Refrescar">⟳</button>
-          <button class="btn" id="logout"   title="Salir">Salir</button>
+          <button class="btn" id="refresh" title="Refrescar">⟳</button>
+          <button class="btn" id="logout" title="Salir">Salir</button>
         </div>
       </div>
-
       <div id="threadList" class="threads"></div>
     </section>
 
-    <!-- CHAT -->
-    <section id="view-chat" class="view view-chat safe-top">
+    <section id="view-chat" class="view view-chat">
       <header class="chatbar">
         <button id="backBtn" class="icon-btn only-mobile" aria-label="Volver">←</button>
         <div class="chat-title">
@@ -61,7 +50,6 @@
         <span id="status" class="pill" style="display:none">HUMANO</span>
       </header>
 
-      <!-- Acciones (desktop) -->
       <div id="sheetRow" class="sheet-row only-desktop" role="toolbar" aria-label="Acciones del chat">
         <button class="sheet-item" id="takeHuman">⏸️ Pausar bot</button>
         <button class="sheet-item" id="resumeBot">▶️ Bot ON</button>
@@ -76,14 +64,12 @@
       <footer class="composer" id="dropZone">
         <div class="left-actions">
           <button id="moreBtn" class="icon-btn only-mobile" aria-label="Más">＋</button>
-          <input id="fileInput" type="file" multiple style="display:none"
-            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,image/*,video/*,audio/*">
+          <input id="fileInput" type="file" multiple style="display:none" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,image/*,video/*,audio/*">
           <button id="attachBtn" class="icon-btn" aria-label="Adjuntar">📎</button>
         </div>
         <textarea id="box" placeholder="Escribe un mensaje…"></textarea>
         <button id="send" class="icon-btn send" aria-label="Enviar">➤</button>
 
-        <!-- Sheet móvil -->
         <div id="sheet" class="sheet">
           <button class="sheet-item" id="takeHuman_m">⏸️ Pausar bot</button>
           <button class="sheet-item" id="resumeBot_m">▶️ Bot ON</button>
